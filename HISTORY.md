@@ -15,3 +15,5 @@ Each commit represents actual work done on the project.
 ## 2025-05-28 21:09 - changes in ai.py
 
 ## 2025-05-29 11:07 - changes in health.py
+
+## 2025-05-29 15:41 - Refactor frontend to chat-based UI and stateless logic
