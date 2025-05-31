@@ -19,3 +19,5 @@ Each commit represents actual work done on the project.
 ## 2025-05-29 15:41 - Refactor frontend to chat-based UI and stateless logic
 
 ## 2025-05-29 22:36 - Add README for Fake News Analyzer Chrome Extension
+
+## 2025-05-31 21:44 - Update README formatting and content clarity
