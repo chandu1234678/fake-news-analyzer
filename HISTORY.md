@@ -21,3 +21,5 @@ Each commit represents actual work done on the project.
 ## 2025-05-29 22:36 - Add README for Fake News Analyzer Chrome Extension
 
 ## 2025-05-31 21:44 - Update README formatting and content clarity
+
+## 2025-06-02 23:11 - Add backend URL to README
