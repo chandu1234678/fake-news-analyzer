@@ -25,3 +25,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-02 23:11 - Add backend URL to README
 
 ## 2025-06-03 13:18 - made a new version
+
+## 2025-06-03 13:41 - Removed the strict version pins on pandas, scikit-learn, groq, and cerebras-cloud-sdk
