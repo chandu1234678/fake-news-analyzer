@@ -23,3 +23,5 @@ Each commit represents actual work done on the project.
 ## 2025-05-31 21:44 - Update README formatting and content clarity
 
 ## 2025-06-02 23:11 - Add backend URL to README
+
+## 2025-06-03 13:18 - made a new version
