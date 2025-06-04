@@ -29,3 +29,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-03 13:41 - Removed the strict version pins on pandas, scikit-learn, groq, and cerebras-cloud-sdk
 
 ## 2025-06-04 12:18 - changed
+
+## 2025-06-04 16:43 - main.py — lifespan instead of deprecated startup event ml.py — lazy load, won't crash on import evidence.py — correct .env path auth_routes.py — clean /me route decision.py — Optional type hints database.py — absolute SQLite path
