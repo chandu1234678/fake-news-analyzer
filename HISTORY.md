@@ -37,3 +37,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-05 12:42 - fix: accept HEAD requests on /health
 
 ## 2025-06-05 15:57 - fix: Kiwi OAuth fallback, HEAD health check, CSP update
+
+## 2025-06-10 09:06 - feat: TruthScan context menu opens popup, new logo
