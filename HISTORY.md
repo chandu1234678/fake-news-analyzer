@@ -41,3 +41,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-10 09:06 - feat: TruthScan context menu opens popup, new logo
 
 ## 2025-06-10 19:26 - feat: new square logo for all toolbar icons
+
+## 2025-06-10 23:13 - fix: remove JWT expiry so tokens never expire + fix all nav to use chrome.runtime.getURL + remove CSP-violating inline scripts
