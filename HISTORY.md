@@ -39,3 +39,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-05 15:57 - fix: Kiwi OAuth fallback, HEAD health check, CSP update
 
 ## 2025-06-10 09:06 - feat: TruthScan context menu opens popup, new logo
+
+## 2025-06-10 19:26 - feat: new square logo for all toolbar icons
