@@ -47,3 +47,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-11 01:02 - fix: chrome.runtime.getURL + remove CSP-violating inline scripts
 
 ## 2025-06-11 05:30 - fix re size isuues
+
+## 2025-06-11 07:30 - fix : Evidence weight and News bar is blue to visually distinguish it from ML (green/red) and AI (purple)
