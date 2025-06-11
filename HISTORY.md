@@ -45,3 +45,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-10 23:13 - fix: remove JWT expiry so tokens never expire + fix all nav to use chrome.runtime.getURL + remove CSP-violating inline scripts
 
 ## 2025-06-11 01:02 - fix: chrome.runtime.getURL + remove CSP-violating inline scripts
+
+## 2025-06-11 05:30 - fix re size isuues
