@@ -51,3 +51,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-11 07:30 - fix : Evidence weight and News bar is blue to visually distinguish it from ML (green/red) and AI (purple)
 
 ## 2025-06-12 10:47 - feat: parallel analysis pipeline, NewsAPI evidence, forgot password with OTP email
+
+## 2025-06-12 14:21 - feat: production hardening — auth, OTP rate limiting, resend timer, deploy config
