@@ -53,3 +53,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-12 10:47 - feat: parallel analysis pipeline, NewsAPI evidence, forgot password with OTP email
 
 ## 2025-06-12 14:21 - feat: production hardening — auth, OTP rate limiting, resend timer, deploy config
+
+## 2025-06-14 07:25 - redesign: cleaner OTP email template matching app design system
