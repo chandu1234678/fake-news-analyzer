@@ -57,3 +57,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-14 07:25 - redesign: cleaner OTP email template matching app design system
 
 ## 2025-06-25 00:38 - RESEND_FROM was empty string in .env — or operator now falls back to default correctly Rate limit was too tight (3 per 10 min) — now 5 per 5 min Frontend now shows the 429 error clearly instead of a generic message
+
+## 2025-06-27 00:33 - edo mail issue solve chesa anukunta
