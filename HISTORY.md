@@ -63,3 +63,5 @@ Each commit represents actual work done on the project.
 ## 2025-06-28 16:55 - debug: add /auth/debug-email endpoint to diagnose Render SMTP
 
 ## 2025-07-06 00:49 - fix: revert to Resend HTTP API (SMTP blocked on Render), clear domain restriction error
+
+## 2025-07-07 04:33 - fix: Gmail SMTP port 587 STARTTLS — works on Render, sends to any email
