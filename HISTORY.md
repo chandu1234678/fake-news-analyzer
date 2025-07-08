@@ -67,3 +67,5 @@ Each commit represents actual work done on the project.
 ## 2025-07-07 04:33 - fix: Gmail SMTP port 587 STARTTLS — works on Render, sends to any email
 
 ## 2025-07-07 23:13 - debug: TCP port test endpoint
+
+## 2025-07-08 10:19 - fix: switch to Brevo HTTP API for OTP emails — works on Render, any recipient
