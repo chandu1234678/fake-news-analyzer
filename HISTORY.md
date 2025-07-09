@@ -71,3 +71,5 @@ Each commit represents actual work done on the project.
 ## 2025-07-08 10:19 - fix: switch to Brevo HTTP API for OTP emails — works on Render, any recipient
 
 ## 2025-07-08 15:13 - fix: Brevo HTTP API for OTP emails — delivers to any email, verified on gitam.in
+
+## 2025-07-09 04:16 - debug: expose email error detail on Render + config back to production
