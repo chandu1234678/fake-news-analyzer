@@ -77,3 +77,5 @@ Each commit represents actual work done on the project.
 ## 2025-07-13 08:42 - fix: clean error message for email failures
 
 ## 2025-07-14 04:32 - feat: PostgreSQL with production connection pooling
+
+## 2025-07-14 18:09 - fix: remove hardcoded sqlite DATABASE_URL from render.yaml, add Brevo env vars
