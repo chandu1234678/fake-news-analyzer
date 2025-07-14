@@ -75,3 +75,5 @@ Each commit represents actual work done on the project.
 ## 2025-07-09 04:16 - debug: expose email error detail on Render + config back to production
 
 ## 2025-07-13 08:42 - fix: clean error message for email failures
+
+## 2025-07-14 04:32 - feat: PostgreSQL with production connection pooling
