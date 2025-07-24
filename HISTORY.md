@@ -83,3 +83,5 @@ Each commit represents actual work done on the project.
 ## 2025-07-16 23:42 - feat: retrain ML model on 98k samples (90% accuracy) with bigrams + 50k features
 
 ## 2025-07-22 13:57 - rewritten the README file
+
+## 2025-07-24 23:10 - fix: remove CDATA wrapper from README
