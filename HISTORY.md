@@ -87,3 +87,5 @@ Each commit represents actual work done on the project.
 ## 2025-07-24 23:10 - fix: remove CDATA wrapper from README
 
 ## 2025-08-01 22:09 - feat: replace extension icons with new logo
+
+## 2025-08-08 19:27 - feat: replace extension icons with new logo with radme
