@@ -91,3 +91,5 @@ Each commit represents actual work done on the project.
 ## 2025-08-08 19:27 - feat: replace extension icons with new logo with radme
 
 ## 2025-08-09 09:30 - feat: structured AI scoring, stance evidence, meta-decision model, UI improvements (items 1-13)
+
+## 2025-08-09 13:48 - feat: uncertainty detection, contradiction meter, source credibility tags, analyze-page button
