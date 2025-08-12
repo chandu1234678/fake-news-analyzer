@@ -95,3 +95,5 @@ Each commit represents actual work done on the project.
 ## 2025-08-09 13:48 - feat: uncertainty detection, contradiction meter, source credibility tags, analyze-page button
 
 ## 2025-08-11 03:29 - feat: ablation study with F1 results, add to README
+
+## 2025-08-12 01:42 - feat: user feedback system — store corrections in DB for retraining, inline UI
