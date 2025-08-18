@@ -99,3 +99,5 @@ Each commit represents actual work done on the project.
 ## 2025-08-12 01:42 - feat: user feedback system — store corrections in DB for retraining, inline UI
 
 ## 2025-08-12 18:56 - feat: manipulation/bias detection — sensational language, emotional amplification, urgency signals
+
+## 2025-08-18 14:11 - feat: PostgreSQL support + Brevo email + all fixes
