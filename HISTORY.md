@@ -103,3 +103,5 @@ Each commit represents actual work done on the project.
 ## 2025-08-18 14:11 - feat: PostgreSQL support + Brevo email + all fixes
 
 ## 2025-08-21 07:08 - fix: popup.js duplicate explHtml, add subclaim styles, feedback styles
+
+## 2025-08-22 05:30 - feat: calibrated ML model, adversarial test gen, feedback retraining, drift detection, model versioning
