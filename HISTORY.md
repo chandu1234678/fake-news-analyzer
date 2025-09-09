@@ -113,3 +113,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-09 00:49 - docs: updated TODO with accurate completion status
 
 ## 2025-09-09 04:35 - feat: dashboard upgrade (model metrics, drift monitor, top sources), saved page badges, detail feedback button
+
+## 2025-09-09 13:50 - feat: adversarial evaluation script, calibration+robustness API, dashboard robustness score
