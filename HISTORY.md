@@ -115,3 +115,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-09 04:35 - feat: dashboard upgrade (model metrics, drift monitor, top sources), saved page badges, detail feedback button
 
 ## 2025-09-09 13:50 - feat: adversarial evaluation script, calibration+robustness API, dashboard robustness score
+
+## 2025-09-09 14:16 - publish-ready: updated README, rate limiting on /message, manifest v2.0.0, LICENSE, history msg fix
