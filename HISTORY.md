@@ -109,3 +109,5 @@ Each commit represents actual work done on the project.
 ## 2025-08-24 13:58 - feat: suspicious phrase highlighting, temporal claim tracking, verdict change detection
 
 ## 2025-08-31 15:37 - feat: dynamic source credibility scoring, detail.js full upgrade with all new fields
+
+## 2025-09-09 00:49 - docs: updated TODO with accurate completion status
