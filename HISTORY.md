@@ -119,3 +119,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-09 14:16 - publish-ready: updated README, rate limiting on /message, manifest v2.0.0, LICENSE, history msg fix
 
 ## 2025-09-09 15:42 - fix: mark 38/39/40/46 complete, data quality filter in train.py
+
+## 2025-09-10 07:28 - fix: 60s timeout + waking hint for Google OAuth cold start
