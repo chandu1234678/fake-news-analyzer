@@ -121,3 +121,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-09 15:42 - fix: mark 38/39/40/46 complete, data quality filter in train.py
 
 ## 2025-09-10 07:28 - fix: 60s timeout + waking hint for Google OAuth cold start
+
+## 2025-09-11 21:43 - perf: pre-warm Google auth token silently on login page load
