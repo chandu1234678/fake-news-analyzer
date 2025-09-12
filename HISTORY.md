@@ -123,3 +123,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-10 07:28 - fix: 60s timeout + waking hint for Google OAuth cold start
 
 ## 2025-09-11 21:43 - perf: pre-warm Google auth token silently on login page load
+
+## 2025-09-12 05:47 - design: Apple-style OTP email — pure white, SF Pro, minimal
