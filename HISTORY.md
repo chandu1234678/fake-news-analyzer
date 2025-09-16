@@ -125,3 +125,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-11 21:43 - perf: pre-warm Google auth token silently on login page load
 
 ## 2025-09-12 05:47 - design: Apple-style OTP email — pure white, SF Pro, minimal
+
+## 2025-09-16 16:49 - fix: UnboundLocalError — move highlights after verdict assignment
