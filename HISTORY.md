@@ -127,3 +127,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-12 05:47 - design: Apple-style OTP email — pure white, SF Pro, minimal
 
 ## 2025-09-16 16:49 - fix: UnboundLocalError — move highlights after verdict assignment
+
+## 2025-09-18 00:18 - feat: one-step-at-a-time loading indicator, typewriter effect on explanation and chat replies
