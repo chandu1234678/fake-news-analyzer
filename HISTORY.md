@@ -129,3 +129,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-16 16:49 - fix: UnboundLocalError — move highlights after verdict assignment
 
 ## 2025-09-18 00:18 - feat: one-step-at-a-time loading indicator, typewriter effect on explanation and chat replies
+
+## 2025-09-22 19:03 - security: centralized rate limiting middleware, security headers, input validation, stress test
