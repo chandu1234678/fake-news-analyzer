@@ -133,3 +133,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-22 19:03 - security: centralized rate limiting middleware, security headers, input validation, stress test
 
 ## 2025-09-24 21:28 - test: 22/22 stress test passing — rate limiting, auth, validation, concurrent load all verified
+
+## 2025-09-25 14:23 - feat: word-by-word typewriter on chat replies, instant on fact card explanation
