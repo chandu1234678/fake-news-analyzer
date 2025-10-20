@@ -143,3 +143,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-29 11:26 - fix: reduce ML weight for short claims, AI dominates on factual statements
 
 ## 2025-09-30 02:54 - fix: health endpoint safe drift import, revert side panel, skeleton loader, markdown rendering, save feedback
+
+## 2025-10-20 12:48 - docs: add mermaid architecture diagrams, fix project structure, improve local setup
