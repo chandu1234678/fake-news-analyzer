@@ -145,3 +145,5 @@ Each commit represents actual work done on the project.
 ## 2025-09-30 02:54 - fix: health endpoint safe drift import, revert side panel, skeleton loader, markdown rendering, save feedback
 
 ## 2025-10-20 12:48 - docs: add mermaid architecture diagrams, fix project structure, improve local setup
+
+## 2025-10-24 11:52 - feat: RoBERTa ML model (primary) + TF-IDF fallback + Colab training notebook with 5 HF datasets
