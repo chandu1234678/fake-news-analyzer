@@ -147,3 +147,5 @@ Each commit represents actual work done on the project.
 ## 2025-10-20 12:48 - docs: add mermaid architecture diagrams, fix project structure, improve local setup
 
 ## 2025-10-24 11:52 - feat: RoBERTa ML model (primary) + TF-IDF fallback + Colab training notebook with 5 HF datasets
+
+## 2025-10-24 15:47 - chore: retrained models - 98.5% accuracy, brier 0.0119, 27k samples from 5 HF datasets
