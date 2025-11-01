@@ -151,3 +151,5 @@ Each commit represents actual work done on the project.
 ## 2025-10-24 15:47 - chore: retrained models - 98.5% accuracy, brier 0.0119, 27k samples from 5 HF datasets
 
 ## 2025-10-27 18:58 - feat: industry-level hardening — security, logging, migrations, retry, pagination, indexes
+
+## 2025-11-01 15:13 - fix: remove RoBERTa startup preload — was blocking port bind on Render free tier; add RAM guard
