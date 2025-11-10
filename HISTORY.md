@@ -155,3 +155,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-01 15:13 - fix: remove RoBERTa startup preload — was blocking port bind on Render free tier; add RAM guard
 
 ## 2025-11-02 20:33 - fix: revert authFetch content-type guard (breaks on proxy 503s); pin scikit-learn==1.6.1
+
+## 2025-11-10 18:55 - feat: god-level DeBERTa fine-tuning notebook (10 datasets, ~130k samples) + configurable model via DEBERTA_MODEL env var
