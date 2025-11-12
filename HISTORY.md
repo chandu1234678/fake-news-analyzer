@@ -157,3 +157,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-02 20:33 - fix: revert authFetch content-type guard (breaks on proxy 503s); pin scikit-learn==1.6.1
 
 ## 2025-11-10 18:55 - feat: god-level DeBERTa fine-tuning notebook (10 datasets, ~130k samples) + configurable model via DEBERTA_MODEL env var
+
+## 2025-11-12 22:54 - feat: Level 70+90 — cross-encoder evidence reranking + Wikidata entity verification
