@@ -171,3 +171,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-14 06:16 - feat: attach menu (+) with image/PDF/txt support in chat input
 
 ## 2025-11-14 08:16 - fix: rewrite notebook with DistilBERT - no version issues, fp16 only on GPU, zero NaN
+
+## 2025-11-14 16:23 - fix: remove pinned transformers version - use whatever Colab has
