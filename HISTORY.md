@@ -165,3 +165,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-14 00:23 - feat: image+text consistency, multi-language support, cross-platform fact-check tracker
 
 ## 2025-11-14 00:40 - fix: clean DeBERTa notebook + explainability + continuous learning + stats route fix
+
+## 2025-11-14 03:17 - feat: add verification checks to every cell in DeBERTa notebook
