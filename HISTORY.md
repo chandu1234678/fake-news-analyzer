@@ -167,3 +167,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-14 00:40 - fix: clean DeBERTa notebook + explainability + continuous learning + stats route fix
 
 ## 2025-11-14 03:17 - feat: add verification checks to every cell in DeBERTa notebook
+
+## 2025-11-14 06:16 - feat: attach menu (+) with image/PDF/txt support in chat input
