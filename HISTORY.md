@@ -163,3 +163,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-13 22:08 - feat: real-time Brave Search API + publisher bias DB (100+ sources) + bias-weighted evidence scoring
 
 ## 2025-11-14 00:23 - feat: image+text consistency, multi-language support, cross-platform fact-check tracker
+
+## 2025-11-14 00:40 - fix: clean DeBERTa notebook + explainability + continuous learning + stats route fix
