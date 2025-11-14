@@ -161,3 +161,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-12 22:54 - feat: Level 70+90 — cross-encoder evidence reranking + Wikidata entity verification
 
 ## 2025-11-13 22:08 - feat: real-time Brave Search API + publisher bias DB (100+ sources) + bias-weighted evidence scoring
+
+## 2025-11-14 00:23 - feat: image+text consistency, multi-language support, cross-platform fact-check tracker
