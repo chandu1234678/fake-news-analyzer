@@ -173,3 +173,5 @@ Each commit represents actual work done on the project.
 ## 2025-11-14 08:16 - fix: rewrite notebook with DistilBERT - no version issues, fp16 only on GPU, zero NaN
 
 ## 2025-11-14 16:23 - fix: remove pinned transformers version - use whatever Colab has
+
+## 2025-11-25 23:51 - fix: pin transformers==4.41.3 + huggingface_hub==0.23.4 together - eliminates DryRunError
