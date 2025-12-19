@@ -181,3 +181,5 @@ Each commit represents actual work done on the project.
 ## 2025-12-06 21:51 - Created using Colab
 
 ## 2025-12-14 12:48 - chore: update model_version.json - DistilBERT 98.91% accuracy
+
+## 2025-12-19 13:16 - chore: add DEBERTA_MODEL + BRAVE_API_KEY + SERPAPI_KEY + GOOGLE_FACTCHECK_API_KEY to render.yaml and .env
