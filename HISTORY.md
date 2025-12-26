@@ -185,3 +185,5 @@ Each commit represents actual work done on the project.
 ## 2025-12-19 13:16 - chore: add DEBERTA_MODEL + BRAVE_API_KEY + SERPAPI_KEY + GOOGLE_FACTCHECK_API_KEY to render.yaml and .env
 
 ## 2025-12-26 02:02 - fix: OOM - cap workers at 3, make Wikidata/platform conditional, fix req scope bug, increase body limit to 512KB
+
+## 2025-12-26 04:13 - chore: trigger redeploy after history rewrite - repo now 4MB
