@@ -187,3 +187,5 @@ Each commit represents actual work done on the project.
 ## 2025-12-26 02:02 - fix: OOM - cap workers at 3, make Wikidata/platform conditional, fix req scope bug, increase body limit to 512KB
 
 ## 2025-12-26 04:13 - chore: trigger redeploy after history rewrite - repo now 4MB
+
+## 2025-12-26 06:06 - fix: compress images to JPEG 800px before send, PDF text extraction, body limit 2MB, add .doc/.docx support
