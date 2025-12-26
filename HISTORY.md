@@ -189,3 +189,5 @@ Each commit represents actual work done on the project.
 ## 2025-12-26 04:13 - chore: trigger redeploy after history rewrite - repo now 4MB
 
 ## 2025-12-26 06:06 - fix: compress images to JPEG 800px before send, PDF text extraction, body limit 2MB, add .doc/.docx support
+
+## 2025-12-26 16:13 - fix: allow image-only messages, auto-generate prompt when image sent without text
