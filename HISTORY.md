@@ -191,3 +191,5 @@ Each commit represents actual work done on the project.
 ## 2025-12-26 06:06 - fix: compress images to JPEG 800px before send, PDF text extraction, body limit 2MB, add .doc/.docx support
 
 ## 2025-12-26 16:13 - fix: allow image-only messages, auto-generate prompt when image sent without text
+
+## 2026-01-11 16:53 - fix: allow send with image+no text, fix DOCX binary garbage, ensure sendText never empty
