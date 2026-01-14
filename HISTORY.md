@@ -193,3 +193,5 @@ Each commit represents actual work done on the project.
 ## 2025-12-26 16:13 - fix: allow image-only messages, auto-generate prompt when image sent without text
 
 ## 2026-01-11 16:53 - fix: allow send with image+no text, fix DOCX binary garbage, ensure sendText never empty
+
+## 2026-01-14 19:03 - fix: image analysis - Gemini Vision retry with flash-lite fallback, fix rate limiting, fix error handling
