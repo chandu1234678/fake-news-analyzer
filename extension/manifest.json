@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Fake News Analyzer",
+  "version": "1.0",
+  "permissions": ["storage", "activeTab", "contextMenus"],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background/service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

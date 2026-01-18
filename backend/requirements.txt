@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic
+sqlalchemy
+requests
+pandas
+scikit-learn
+joblib
+google-generativeai
