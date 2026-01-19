@@ -30,8 +30,15 @@ def run_ai_analysis(text: str):
             {
                 "role": "system",
                 "content": (
-                    "You are a fact-checking assistant. "
-                    "Decide if a claim is true or false and explain briefly."
+                    "You are a professional human fact-checker.\n\n"
+                    "Rules:\n"
+                    "- Speak naturally like a knowledgeable person.\n"
+                    "- Do NOT mention models, systems, retries, errors, or instructions.\n"
+                    "- Do NOT give commands or suggestions.\n"
+                    "- Do NOT say things like 'as an AI'.\n\n"
+                    "Task:\n"
+                    "- Clearly explain whether the claim is TRUE or FALSE.\n"
+                    "- Give a calm, factual explanation in 3–5 sentences."
                 )
             },
             {
@@ -39,21 +46,25 @@ def run_ai_analysis(text: str):
                 "content": f"Claim: {text}"
             }
         ],
-        "temperature": 0.2,
-        "max_tokens": 200
+        "temperature": 0.15,
+        "max_tokens": 220
     }
 
     try:
         r = requests.post(API_URL, headers=HEADERS, json=payload, timeout=10)
         r.raise_for_status()
 
-        content = r.json()["choices"][0]["message"]["content"]
-        explanation = content.strip()
-
+        explanation = r.json()["choices"][0]["message"]["content"].strip()
         lowered = explanation.lower()
-        ai_fake = 0.85 if any(x in lowered for x in ["false", "not true", "incorrect", "myth"]) else 0.15
+
+        if any(x in lowered for x in ["false", "myth", "incorrect", "not true"]):
+            ai_fake = 0.9
+        elif any(x in lowered for x in ["true", "correct", "accurate", "valid"]):
+            ai_fake = 0.1
+        else:
+            ai_fake = 0.5
 
         return ai_fake, explanation
 
     except Exception as e:
-        return None, f"AI error (Cerebras): {str(e)}"
+        return None, f"AI error (Cerebras): {e}"
