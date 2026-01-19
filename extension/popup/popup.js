@@ -1,125 +1,173 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const chatContainer = document.getElementById('chat-container');
-    const inputText = document.getElementById('input-text');
-    const analyzeBtn = document.getElementById('analyze-btn');
+  const chatContainer = document.getElementById('chat-container');
+  const inputText = document.getElementById('input-text');
+  const sendBtn = document.getElementById('send-btn');
+  const BACKEND_URL = "https://fake-news-analyzer-j6ka.onrender.com/analyze";
 
-    // Helper: Scroll to bottom
-    const scrollToBottom = () => {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    };
+  // Auto-resize textarea
+  inputText.addEventListener('input', () => {
+    inputText.style.height = 'auto';
+    inputText.style.height = Math.min(inputText.scrollHeight, 120) + 'px';
+  });
 
-    // Helper: Add message to chat
-    const addMessage = (content, type, isHtml = false) => {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${type}`;
-        
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble';
-        
-        if (isHtml) {
-            bubble.innerHTML = content;
-        } else {
-            bubble.textContent = content;
-        }
-        
-        msgDiv.appendChild(bubble);
-        chatContainer.appendChild(msgDiv);
-        scrollToBottom();
-        return msgDiv; // Return for updates (e.g., loading)
-    };
+  const scrollToBottom = () => {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  };
 
-    // API Call
-    const analyzeText = async (text) => {
-        if (!text || !text.trim()) return;
+  const addMessage = (content, type) => {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${type}`;
 
-        // Add user message
-        addMessage(text, 'user');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
 
-        // Add loading message
-        const loadingDiv = addMessage('⏳ Analyzing...', 'system');
-        
-        try {
-            const response = await fetch("https://fake-news-analyzer-j6ka.onrender.com/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, explain: true })
-            });
+    if (typeof content === 'string') {
+      bubble.textContent = content;
+    } else if (content instanceof Node) {
+      bubble.appendChild(content);
+    }
 
-            if (!response.ok) {
-                throw new Error("Backend connection failed");
-            }
+    msgDiv.appendChild(bubble);
+    chatContainer.appendChild(msgDiv);
+    scrollToBottom();
+    return msgDiv;
+  };
 
-            const data = await response.json();
-            
-            // Format result
-            const verdictClass = data.verdict === 'fake' ? 'fake' : (data.verdict === 'real' ? 'real' : '');
-            
-            let evidenceHtml = '';
-            if (data.evidence && data.evidence.length > 0) {
-                evidenceHtml = `<div class="evidence-section"><div class="evidence-title">Verified Sources:</div>`;
-                data.evidence.forEach(url => {
-                    evidenceHtml += `<a href="${url}" target="_blank" class="evidence-link">${url}</a>`;
-                });
-                evidenceHtml += `</div>`;
+  const showTypingIndicator = () => {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message system typing';
+    msgDiv.innerHTML = `
+      <div class="bubble typing-indicator">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    `;
+    chatContainer.appendChild(msgDiv);
+    scrollToBottom();
+    return msgDiv;
+  };
+
+  const sendMessage = async (text) => {
+    if (!text || !text.trim()) return;
+
+    // UI Updates
+    addMessage(text, 'user');
+    inputText.value = '';
+    inputText.style.height = 'auto'; // Reset height
+    inputText.focus();
+
+    sendBtn.disabled = true;
+    const typingMsg = showTypingIndicator();
+
+    try {
+      const response = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text })
+      });
+
+      // Remove typing indicator
+      if (chatContainer.contains(typingMsg)) {
+        chatContainer.removeChild(typingMsg);
+      }
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      renderResponse(data);
+
+    } catch (error) {
+      if (chatContainer.contains(typingMsg)) {
+        chatContainer.removeChild(typingMsg);
+      }
+      addMessage(`Error: ${error.message}`, 'system error-message');
+    } finally {
+      sendBtn.disabled = false;
+      inputText.focus();
+    }
+  };
+
+  const renderResponse = (data) => {
+    const fragment = document.createDocumentFragment();
+
+    // Verdict Badge (only if present and meaningful)
+    if (data.verdict) {
+      const verdictDiv = document.createElement('div');
+      verdictDiv.className = `verdict-badge ${data.verdict.toLowerCase()}`;
+      verdictDiv.textContent = data.verdict;
+      fragment.appendChild(verdictDiv);
+    }
+
+    // Explanation (Main content)
+    const explanationDiv = document.createElement('div');
+    explanationDiv.className = 'response-content';
+    explanationDiv.textContent = data.explanation || "No explanation provided.";
+    fragment.appendChild(explanationDiv);
+
+    // Evidence
+    if (data.evidence && Array.isArray(data.evidence) && data.evidence.length > 0) {
+      const validEvidence = data.evidence.filter(e => e && typeof e === 'string' && !e.includes("No verified sources"));
+
+      if (validEvidence.length > 0) {
+        const evidenceList = document.createElement('div');
+        evidenceList.className = 'evidence-list';
+
+        const header = document.createElement('div');
+        header.className = 'evidence-header';
+        header.textContent = 'Sources:';
+        evidenceList.appendChild(header);
+
+        validEvidence.forEach(url => {
+            let item;
+            if (url.startsWith('http')) {
+                 item = document.createElement('a');
+                 item.href = url;
+                 item.target = "_blank";
+                 item.className = 'evidence-link';
+                 item.textContent = url;
             } else {
-                 evidenceHtml = `<div class="evidence-section"><div class="evidence-title">No direct evidence found.</div></div>`;
+                 item = document.createElement('div');
+                 item.className = 'evidence-link';
+                 item.textContent = url;
             }
+            evidenceList.appendChild(item);
+        });
+        fragment.appendChild(evidenceList);
+      }
+    }
 
-            const resultHtml = `
-                <div class="result-header">
-                    <span class="verdict ${verdictClass}">${data.verdict.toUpperCase()}</span>
-                    <span>${data.confidence}</span>
-                </div>
-                <div class="score-row">
-                   <span>ML Score: ${data.ml_score}</span>
-                   <span>AI Score: ${data.ai_score}</span>
-                </div>
-                <div class="explanation">
-                   ${data.explanation}
-                </div>
-                ${evidenceHtml}
-            `;
+    addMessage(fragment, 'system');
+  };
 
-            // Remove loading and add result
-            chatContainer.removeChild(loadingDiv);
-            addMessage(resultHtml, 'system', true);
+  // Event Listeners
+  sendBtn.addEventListener('click', () => {
+    sendMessage(inputText.value);
+  });
 
-        } catch (error) {
-            chatContainer.removeChild(loadingDiv);
-            addMessage(`❌ Error: ${error.message}. Is the backend running?`, 'system');
-        }
-    };
+  inputText.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(inputText.value);
+    }
+  });
 
-    // 1. Check for pending text from context menu
-    chrome.storage.local.get('selectedText', (data) => {
-        if (data.selectedText) {
-            analyzeText(data.selectedText);
-            // Clear it so we don't re-analyze on reload (optional, but good UX)
-            chrome.storage.local.remove('selectedText');
-        }
-    });
+  // Check for selected text on open
+  chrome.storage.local.get('selectedText', (data) => {
+    if (data.selectedText) {
+      sendMessage(data.selectedText);
+      chrome.storage.local.remove('selectedText');
+    } else {
+      addMessage("Hi! I'm your fact-checking assistant. Send me a claim or ask a question.", 'system');
+    }
+  });
 
-    // 2. Listen for new messages (if panel is already open)
-    chrome.runtime.onMessage.addListener((message) => {
-        if (message.type === 'ANALYZE_TEXT') {
-            analyzeText(message.text);
-        }
-    });
-
-    // 3. Manual Input
-    analyzeBtn.addEventListener('click', () => {
-        const text = inputText.value;
-        if (text) {
-            analyzeText(text);
-            inputText.value = '';
-        }
-    });
-    
-    // Enter key support
-    inputText.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            analyzeBtn.click();
-        }
-    });
+  // Listen for new messages (e.g. from context menu while popup is open)
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'TEXT_SELECTED') {
+      sendMessage(message.payload);
+    }
+  });
 });

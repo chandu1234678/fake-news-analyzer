@@ -8,20 +8,16 @@
 <body>
   <div class="app-container">
     <header>
-      <h3>Fake News Analyzer</h3>
+      <h3>Fact Checker</h3>
     </header>
     
     <div id="chat-container">
-      <div class="message system">
-        <div class="bubble">
-          Hello! Select text on any webpage and open this popup, or paste text below.
-        </div>
-      </div>
+      <!-- Messages will be injected here -->
     </div>
     
     <div class="input-area">
-      <textarea id="input-text" placeholder="Paste claim or news here..."></textarea>
-      <button id="analyze-btn" title="Analyze">
+      <textarea id="input-text" placeholder="Type a claim, question, or just chat..." rows="1"></textarea>
+      <button id="send-btn" title="Send">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
           <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
         </svg>
