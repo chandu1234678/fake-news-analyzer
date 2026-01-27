@@ -195,3 +195,5 @@ Each commit represents actual work done on the project.
 ## 2026-01-11 16:53 - fix: allow send with image+no text, fix DOCX binary garbage, ensure sendText never empty
 
 ## 2026-01-14 19:03 - fix: image analysis - Gemini Vision retry with flash-lite fallback, fix rate limiting, fix error handling
+
+## 2026-01-27 13:11 - Complete P1.1: Add all 7 training notebooks for transformer pipeline
