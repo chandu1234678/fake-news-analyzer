@@ -1,78 +1,78 @@
-Fake News Analyzer – Chrome Extension
+# Fake News Analyzer – Chrome Extension
 
 This project is a browser extension that analyzes selected news content and estimates whether the information may be misleading or false.
 
-It connects to a FastAPI backend that combines machine learning and AI reasoning.
+The extension connects to a FastAPI backend which performs machine learning prediction and AI-based reasoning.
 
-Objective
+## Objective
 
-To build a multi-stage fact-checking system that:
+The main goal of this project is to design a structured fact-checking pipeline that includes:
 
-Detects whether text is a factual claim
+- Claim detection
+- ML-based probability estimation
+- LLM-generated reasoning
+- Confidence score calculation
 
-Estimates probability using an ML model
+The focus was not only on prediction accuracy but also on system design.
 
-Generates reasoning using an LLM
+## Features
 
-Produces a structured confidence score
+- Right-click news analysis from browser
+- Sends selected text to backend API
+- ML-based probability score
+- LLM explanation output
+- Combined confidence score
+- Backend deployed on Render
 
-Features
+## System Flow
 
-Right-click news analysis
+1. User selects text in browser
+2. Extension sends text to backend `/analyze`
+3. Backend performs:
+   - Claim detection
+   - ML classification using TF-IDF + sklearn
+   - LLM reasoning through API
+4. Scores are combined
+5. Structured result is returned
 
-ML-based probability scoring
+## Technical Design
 
-LLM explanation generation
+The backend is structured into:
 
-Structured verdict output
+- API routes
+- ML model loader
+- LLM integration service
+- Score aggregation logic
 
-Backend deployment on Render
+Claim detection was added to prevent non-factual text from being analyzed incorrectly.
 
-System Flow
-
-User selects text
-
-Extension sends request to backend /analyze
-
-Backend performs:
-
-Claim detection
-
-ML prediction
-
-LLM reasoning
-
-Final confidence score is generated
-
-Result is returned to extension
-
-Tech Stack
+## Tech Stack
 
 Frontend:
-
-JavaScript
-
-Chrome Extension (Manifest V3)
+- JavaScript
+- Chrome Extension (Manifest V3)
 
 Backend:
+- FastAPI
+- Scikit-learn
+- TF-IDF vectorizer
+- LLM API integration
+- Render deployment
 
-FastAPI
+## Key Learnings
 
-Scikit-learn
+- Browser extension architecture
+- API communication between frontend and backend
+- Combining ML and LLM systems
+- Handling noisy real-world text input
+- Deployment challenges in free-tier hosting
 
-TF-IDF vectorizer
+## Future Improvements
 
-LLM API integration
-
-What I Learned
-
-Browser extension architecture
-
-Combining ML and LLM systems
-
-Handling noisy real-world inputs
-
-Backend deployment challenges
+- Improved claim classification
+- Database-based history tracking
+- User authentication system
+- Performance optimization
 images:
 <img width="1365" height="684" alt="image" src="https://github.com/user-attachments/assets/c7e3b2f6-910d-4616-8ffd-65378737d900" />
 <img width="1360" height="649" alt="image" src="https://github.com/user-attachments/assets/e1f78c70-62b0-4405-9f99-dbe16ffe2cda" />
