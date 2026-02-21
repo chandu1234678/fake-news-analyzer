@@ -76,4 +76,5 @@ Backend:
 images:
 <img width="1365" height="684" alt="image" src="https://github.com/user-attachments/assets/c7e3b2f6-910d-4616-8ffd-65378737d900" />
 <img width="1360" height="649" alt="image" src="https://github.com/user-attachments/assets/e1f78c70-62b0-4405-9f99-dbe16ffe2cda" />
-
+This extension communicates with the backend available at:
+https://github.com/chandu1234678/fake-news-backend
