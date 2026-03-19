@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings — FactCheck AI</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="page-wrap">
+
+  <header class="page-header">
+    <a href="popup.html" class="back-btn">
+      <span class="material-symbols-outlined ms-20">arrow_back</span>
+    </a>
+    <h1>Settings</h1>
+  </header>
+
+  <div class="page-body">
+
+    <div class="card">
+      <div class="card-title">Profile</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div id="profile-avatar" class="sidebar-avatar" style="width:36px;height:36px;font-size:13px;flex-shrink:0">?</div>
+        <div>
+          <div id="profile-name" style="font-size:13px;font-weight:500;color:var(--t1)">Loading...</div>
+          <div id="profile-email" style="font-size:11px;color:var(--t3)"></div>
+        </div>
+      </div>
+      <button id="logout-btn" class="danger-btn">
+        <span class="material-symbols-outlined ms-14" style="vertical-align:middle;margin-right:6px">logout</span>
+        Sign Out
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Backend</div>
+      <div class="form-group">
+        <label class="form-label">API URL</label>
+        <input id="api-url" type="text" value="http://127.0.0.1:8000" class="form-input">
+      </div>
+      <button id="test-btn" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--a-bdr);background:var(--a-dim);color:var(--accent);font-size:12px;font-family:Inter,sans-serif;cursor:pointer;transition:opacity 0.15s">
+        Test Connection
+      </button>
+      <div id="conn-status" style="font-size:11px;color:var(--t3);text-align:center;margin-top:7px;min-height:16px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Preferences</div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Auto fact-check selected text</div>
+          <div class="setting-sub">Analyze text when you right-click</div>
+        </div>
+        <div class="toggle-track on" id="toggle-autocheck"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Show confidence scores</div>
+          <div class="setting-sub">Display ML and AI scores on cards</div>
+        </div>
+        <div class="toggle-track on" id="toggle-scores"><div class="toggle-thumb"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">About</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:12px;color:var(--t3)">Version</span>
+          <span style="font-size:12px;color:var(--t1)">1.0.0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:12px;color:var(--t3)">AI Providers</span>
+          <span style="font-size:12px;color:var(--t1)">Cerebras · Groq · Gemini</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:12px;color:var(--t3)">ML Model</span>
+          <span style="font-size:12px;color:var(--t1)">Trained locally</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="popup.html"><span class="material-symbols-outlined">chat</span>Chat</a>
+    <a href="dashboard.html"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a href="saved.html"><span class="material-symbols-outlined">bookmark</span>Saved</a>
+    <a href="history.html"><span class="material-symbols-outlined">history</span>History</a>
+    <a href="settings.html" class="active"><span class="material-symbols-outlined">settings</span>Settings</a>
+  </nav>
+
+</div>
+<script src="settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>History — FactCheck AI</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="page-wrap">
+
+  <header class="page-header">
+    <a href="popup.html" class="back-btn">
+      <span class="material-symbols-outlined ms-20">arrow_back</span>
+    </a>
+    <h1>Chat History</h1>
+    <button id="clear-btn" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--fake);font-family:Inter,sans-serif;padding:4px 6px;border-radius:6px;transition:opacity 0.15s">Clear All</button>
+  </header>
+
+  <div class="page-body" id="sessions-list">
+    <div style="font-size:12px;color:var(--t3);text-align:center;padding:32px 0">Loading...</div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="popup.html"><span class="material-symbols-outlined">chat</span>Chat</a>
+    <a href="dashboard.html"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a href="saved.html"><span class="material-symbols-outlined">bookmark</span>Saved</a>
+    <a href="history.html" class="active"><span class="material-symbols-outlined">history</span>History</a>
+    <a href="settings.html"><span class="material-symbols-outlined">settings</span>Settings</a>
+  </nav>
+
+</div>
+<script src="config.js"></script>
+<script src="history.js"></script>
+</body>
+</html>

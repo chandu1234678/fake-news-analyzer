@@ -1,125 +1,383 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const chatContainer = document.getElementById('chat-container');
-    const inputText = document.getElementById('input-text');
-    const analyzeBtn = document.getElementById('analyze-btn');
+// API is defined in config.js (loaded before this script)
 
-    // Helper: Scroll to bottom
-    const scrollToBottom = () => {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    };
+let token = null;
+let user = null;
+let currentSessionId = null;
+let history = [];
+let sessions = [];
 
-    // Helper: Add message to chat
-    const addMessage = (content, type, isHtml = false) => {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${type}`;
-        
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble';
-        
-        if (isHtml) {
-            bubble.innerHTML = content;
-        } else {
-            bubble.textContent = content;
-        }
-        
-        msgDiv.appendChild(bubble);
-        chatContainer.appendChild(msgDiv);
-        scrollToBottom();
-        return msgDiv; // Return for updates (e.g., loading)
-    };
+const chatContainer = document.getElementById("chat-container");
+const inputText     = document.getElementById("input-text");
+const sendBtn       = document.getElementById("send-btn");
 
-    // API Call
-    const analyzeText = async (text) => {
-        if (!text || !text.trim()) return;
-
-        // Add user message
-        addMessage(text, 'user');
-
-        // Add loading message
-        const loadingDiv = addMessage('⏳ Analyzing...', 'system');
-        
-        try {
-            const response = await fetch("https://fake-news-analyzer-j6ka.onrender.com/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, explain: true })
-            });
-
-            if (!response.ok) {
-                throw new Error("Backend connection failed");
-            }
-
-            const data = await response.json();
-            
-            // Format result
-            const verdictClass = data.verdict === 'fake' ? 'fake' : (data.verdict === 'real' ? 'real' : '');
-            
-            let evidenceHtml = '';
-            if (data.evidence && data.evidence.length > 0) {
-                evidenceHtml = `<div class="evidence-section"><div class="evidence-title">Verified Sources:</div>`;
-                data.evidence.forEach(url => {
-                    evidenceHtml += `<a href="${url}" target="_blank" class="evidence-link">${url}</a>`;
-                });
-                evidenceHtml += `</div>`;
-            } else {
-                 evidenceHtml = `<div class="evidence-section"><div class="evidence-title">No direct evidence found.</div></div>`;
-            }
-
-            const resultHtml = `
-                <div class="result-header">
-                    <span class="verdict ${verdictClass}">${data.verdict.toUpperCase()}</span>
-                    <span>${data.confidence}</span>
-                </div>
-                <div class="score-row">
-                   <span>ML Score: ${data.ml_score}</span>
-                   <span>AI Score: ${data.ai_score}</span>
-                </div>
-                <div class="explanation">
-                   ${data.explanation}
-                </div>
-                ${evidenceHtml}
-            `;
-
-            // Remove loading and add result
-            chatContainer.removeChild(loadingDiv);
-            addMessage(resultHtml, 'system', true);
-
-        } catch (error) {
-            chatContainer.removeChild(loadingDiv);
-            addMessage(`❌ Error: ${error.message}. Is the backend running?`, 'system');
-        }
-    };
-
-    // 1. Check for pending text from context menu
-    chrome.storage.local.get('selectedText', (data) => {
-        if (data.selectedText) {
-            analyzeText(data.selectedText);
-            // Clear it so we don't re-analyze on reload (optional, but good UX)
-            chrome.storage.local.remove('selectedText');
-        }
-    });
-
-    // 2. Listen for new messages (if panel is already open)
-    chrome.runtime.onMessage.addListener((message) => {
-        if (message.type === 'ANALYZE_TEXT') {
-            analyzeText(message.text);
-        }
-    });
-
-    // 3. Manual Input
-    analyzeBtn.addEventListener('click', () => {
-        const text = inputText.value;
-        if (text) {
-            analyzeText(text);
-            inputText.value = '';
-        }
-    });
-    
-    // Enter key support
-    inputText.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            analyzeBtn.click();
-        }
-    });
+// ── Wire buttons ──────────────────────────────────────────────
+document.getElementById("open-sidebar-btn").addEventListener("click", openSidebar);
+document.getElementById("close-sidebar-btn").addEventListener("click", closeSidebar);
+document.getElementById("sidebar-overlay").addEventListener("click", closeSidebar);
+document.getElementById("new-chat-btn").addEventListener("click", newChat);
+document.getElementById("new-chat-sidebar-btn").addEventListener("click", newChat);
+document.getElementById("logout-btn").addEventListener("click", doLogout);
+sendBtn.addEventListener("click", send);
+inputText.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
 });
+inputText.addEventListener("input", autoResize);
+
+// ── Init ──────────────────────────────────────────────────────
+chrome.storage.local.get(["token", "user", "currentSessionId"], async d => {
+  if (!d.token) { window.location.href = "login.html"; return; }
+  token = d.token;
+  user  = d.user;
+  currentSessionId = d.currentSessionId || null;
+  updateUserUI();
+  await loadSessions();
+  if (currentSessionId) {
+    await loadSessionMessages(currentSessionId);
+  } else {
+    showWelcome();
+  }
+  chrome.storage.local.get("selectedText", sd => {
+    if (sd.selectedText) {
+      chrome.storage.local.remove("selectedText");
+      inputText.value = sd.selectedText;
+      send();
+    }
+  });
+});
+
+chrome.runtime.onMessage.addListener(msg => {
+  if (msg.type === "ANALYZE_TEXT") { inputText.value = msg.text; send(); }
+});
+
+// ── User UI ───────────────────────────────────────────────────
+function updateUserUI() {
+  if (!user) return;
+  const initials = (user.name || user.email || "?").charAt(0).toUpperCase();
+  const avatarEl = document.getElementById("sidebar-avatar");
+  if (avatarEl) {
+    if (user.picture) {
+      avatarEl.innerHTML = `<img src="${user.picture}" alt="">`;
+    } else {
+      avatarEl.textContent = initials;
+    }
+  }
+  const nameEl  = document.getElementById("sidebar-name");
+  const emailEl = document.getElementById("sidebar-email");
+  if (nameEl)  nameEl.textContent  = user.name  || "User";
+  if (emailEl) emailEl.textContent = user.email || "";
+}
+
+function doLogout() {
+  chrome.storage.local.clear(() => { window.location.href = "login.html"; });
+}
+
+// ── Sidebar ───────────────────────────────────────────────────
+function openSidebar() {
+  document.getElementById("sidebar").style.transform = "translateX(0)";
+  document.getElementById("sidebar-overlay").classList.add("visible");
+}
+function closeSidebar() {
+  document.getElementById("sidebar").style.transform = "";
+  document.getElementById("sidebar-overlay").classList.remove("visible");
+}
+
+// ── Sessions ──────────────────────────────────────────────────
+async function loadSessions() {
+  try {
+    const res = await authFetch("/history/sessions");
+    if (!res.ok) return;
+    sessions = await res.json();
+    renderSessions();
+  } catch(_) {}
+}
+
+function renderSessions() {
+  const list = document.getElementById("sessions-list");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!sessions.length) {
+    const p = document.createElement("p");
+    p.style.cssText = "font-size:11px;color:var(--t3);padding:8px 10px;";
+    p.textContent = "No chats yet";
+    list.appendChild(p);
+    return;
+  }
+  sessions.forEach(s => {
+    const div = document.createElement("div");
+    div.className = "session-item" + (s.id === currentSessionId ? " active" : "");
+    div.innerHTML = `
+      <span class="material-symbols-outlined ms-14" style="color:var(--t3);flex-shrink:0">chat_bubble</span>
+      <span class="s-title">${esc(s.title)}</span>
+      <button class="session-del"><span class="material-symbols-outlined ms-12">delete</span></button>`;
+    div.addEventListener("click", () => switchSession(s.id));
+    div.querySelector(".session-del").addEventListener("click", e => {
+      e.stopPropagation(); deleteSession(s.id);
+    });
+    list.appendChild(div);
+  });
+}
+
+async function switchSession(id) {
+  currentSessionId = id;
+  chrome.storage.local.set({ currentSessionId: id });
+  closeSidebar();
+  const s = sessions.find(x => x.id === id);
+  if (s) document.getElementById("chat-title").textContent = s.title;
+  chatContainer.innerHTML = "";
+  await loadSessionMessages(id);
+  renderSessions();
+}
+
+async function loadSessionMessages(sessionId) {
+  try {
+    const res = await authFetch(`/history/sessions/${sessionId}/messages`);
+    if (!res.ok) { showWelcome(); return; }
+    const msgs = await res.json();
+    if (!msgs.length) { showWelcome(); return; }
+    chatContainer.innerHTML = "";
+    history = [];
+    msgs.forEach(m => {
+      if (m.role === "user") {
+        addUserMsg(m.content, false);
+        history.push({ role: "user", content: m.content });
+      } else {
+        if (m.is_claim) {
+          addFactCard(m, false);
+        } else {
+          addChatReply(m.content, false);
+          history.push({ role: "assistant", content: m.content });
+        }
+      }
+    });
+    scrollBottom();
+  } catch(_) { showWelcome(); }
+}
+
+async function newChat() {
+  currentSessionId = null;
+  history = [];
+  chrome.storage.local.remove("currentSessionId");
+  document.getElementById("chat-title").textContent = "FactCheck AI";
+  chatContainer.innerHTML = "";
+  showWelcome();
+  closeSidebar();
+}
+
+async function deleteSession(id) {
+  try {
+    await authFetch(`/history/sessions/${id}`, { method: "DELETE" });
+    sessions = sessions.filter(s => s.id !== id);
+    if (currentSessionId === id) newChat();
+    renderSessions();
+  } catch(_) {}
+}
+
+// ── Chat UI ───────────────────────────────────────────────────
+function showWelcome() {
+  const wrap = document.createElement("div");
+  wrap.className = "welcome-screen";
+  wrap.innerHTML = `
+    <div class="welcome-icon">
+      <span class="material-symbols-outlined ms-20">fact_check</span>
+    </div>
+    <div class="welcome-title">FactCheck AI</div>
+    <div class="welcome-sub">Ask me anything or paste a news claim.<br>I'll chat or fact-check automatically.</div>
+    <div class="welcome-chips">
+      <button class="welcome-chip" id="wc1">📰 Paste a headline to fact-check</button>
+      <button class="welcome-chip" id="wc2">💬 Ask me anything</button>
+    </div>`;
+  chatContainer.innerHTML = "";
+  chatContainer.appendChild(wrap);
+  document.getElementById("wc1").addEventListener("click", () => setInput("Is this news real? [paste headline]"));
+  document.getElementById("wc2").addEventListener("click", () => setInput("What is misinformation?"));
+}
+
+function setInput(text) {
+  inputText.value = text;
+  inputText.focus();
+  autoResize();
+}
+
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const scrollBottom = () => { chatContainer.scrollTop = chatContainer.scrollHeight; };
+
+function addUserMsg(text, scroll = true) {
+  const el = document.createElement("div");
+  el.className = "user-bubble";
+  el.textContent = text;
+  chatContainer.appendChild(el);
+  if (scroll) scrollBottom();
+}
+
+function addTyping() {
+  const row = document.createElement("div");
+  row.className = "bot-row";
+  row.innerHTML = `
+    <div class="bot-avatar"><span class="material-symbols-outlined">smart_toy</span></div>
+    <div class="bot-bubble"><div class="typing-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>`;
+  chatContainer.appendChild(row);
+  scrollBottom();
+  return row;
+}
+
+function addChatReply(text, scroll = true) {
+  const row = document.createElement("div");
+  row.className = "bot-row";
+  const avatar = document.createElement("div");
+  avatar.className = "bot-avatar";
+  avatar.innerHTML = `<span class="material-symbols-outlined">smart_toy</span>`;
+  const bubble = document.createElement("div");
+  bubble.className = "bot-bubble";
+  bubble.textContent = text;
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  chatContainer.appendChild(row);
+  if (scroll) scrollBottom();
+}
+
+function addFactCard(data, scroll = true) {
+  const verdict = (data.verdict || "uncertain").toLowerCase();
+  const confPct = Math.round((data.confidence || 0) * 100);
+  const mlPct   = Math.round((data.ml_score   || 0) * 100);
+  const aiPct   = Math.round((data.ai_score   || 0) * 100);
+  const vClass  = verdict === "real" ? "v-real" : verdict === "fake" ? "v-fake" : "v-uncertain";
+  const vIcon   = verdict === "real" ? "check_circle" : verdict === "fake" ? "cancel" : "help";
+  const mlFill  = mlPct > 60 ? "fill-fake" : "fill-real";
+
+  const srcHtml = (data.evidence && data.evidence.length)
+    ? data.evidence.slice(0, 3).map(s => `<a href="${esc(s)}" target="_blank">↗ ${esc(s)}</a>`).join("")
+    : `<span style="font-size:11px;color:var(--t3)">No sources found</span>`;
+
+  const explHtml = data.explanation
+    ? `<div class="fact-expl">${esc(data.explanation)}</div>` : "";
+
+  const srcSection = (data.evidence && data.evidence.length)
+    ? `<div class="fact-sources">${srcHtml}</div>` : "";
+
+  const row = document.createElement("div");
+  row.className = "bot-row";
+
+  const avatar = document.createElement("div");
+  avatar.className = "bot-avatar";
+  avatar.innerHTML = `<span class="material-symbols-outlined">fact_check</span>`;
+
+  const card = document.createElement("div");
+  card.className = "fact-card";
+  card.innerHTML = `
+    <div class="fact-header">
+      <div class="verdict-badge ${vClass}">
+        <span class="material-symbols-outlined ms-14">${vIcon}</span>
+        ${verdict}
+      </div>
+      <span class="conf-text">Confidence: <strong>${confPct}%</strong></span>
+    </div>
+    <div class="fact-body">
+      <div class="score-row">
+        <span class="score-lbl">ML</span>
+        <div class="score-track"><div class="score-fill ${mlFill} ml-bar"></div></div>
+        <span class="score-num">${mlPct}%</span>
+      </div>
+      <div class="score-row">
+        <span class="score-lbl">AI</span>
+        <div class="score-track"><div class="score-fill fill-ai ai-bar"></div></div>
+        <span class="score-num">${aiPct}%</span>
+      </div>
+      ${explHtml}
+      ${srcSection}
+      <div class="fact-actions">
+        <button class="fact-btn view-btn">View Detail</button>
+        <button class="fact-btn primary save-btn">Save Claim</button>
+      </div>
+    </div>`;
+
+  row.appendChild(avatar);
+  row.appendChild(card);
+  chatContainer.appendChild(row);
+
+  // Set bar widths via JS after DOM insertion
+  card.querySelector(".ml-bar").style.width = `${mlPct}%`;
+  card.querySelector(".ai-bar").style.width = `${aiPct}%`;
+  card.querySelector(".view-btn").addEventListener("click", () => viewDetail(data));
+  card.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
+
+  if (scroll) scrollBottom();
+}
+
+function viewDetail(data) {
+  chrome.storage.local.set({ detailData: data }, () => { window.location.href = "detail.html"; });
+}
+
+function saveCard(data) {
+  chrome.storage.local.get("savedClaims", d => {
+    const claims = d.savedClaims || [];
+    claims.unshift(data);
+    chrome.storage.local.set({ savedClaims: claims.slice(0, 50) });
+  });
+}
+
+// ── Send ──────────────────────────────────────────────────────
+async function send() {
+  const text = inputText.value.trim();
+  if (!text) return;
+  inputText.value = "";
+  autoResize();
+
+  // Clear welcome screen if present
+  if (chatContainer.querySelector(".welcome-screen")) {
+    chatContainer.innerHTML = "";
+  }
+
+  addUserMsg(text);
+  const typing = addTyping();
+  sendBtn.disabled = true;
+
+  try {
+    const body = { message: text, session_id: currentSessionId, history };
+    const res  = await authFetch("/message", { method: "POST", body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    const data = await res.json();
+    typing.remove();
+
+    if (data.session_id && data.session_id !== currentSessionId) {
+      currentSessionId = data.session_id;
+      chrome.storage.local.set({ currentSessionId });
+      await loadSessions();
+    }
+
+    if (data.is_claim) {
+      addFactCard(data);
+    } else {
+      addChatReply(data.reply);
+      history.push({ role: "user", content: text });
+      history.push({ role: "assistant", content: data.reply });
+      if (history.length > 20) history = history.slice(-20);
+    }
+
+    if (currentSessionId) {
+      const s = sessions.find(x => x.id === currentSessionId);
+      if (s) document.getElementById("chat-title").textContent = s.title;
+    }
+  } catch(err) {
+    typing.remove();
+    addChatReply(`Connection error: ${err.message}. Make sure the backend is running.`);
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+async function authFetch(path, opts = {}) {
+  return fetch(`${API}${path}`, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...(opts.headers || {}),
+    }
+  });
+}
+
+function autoResize() {
+  inputText.style.height = "auto";
+  inputText.style.height = Math.min(inputText.scrollHeight, 88) + "px";
+}
