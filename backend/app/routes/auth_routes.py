@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 
 from database import get_db
 from app.models import User
-from app.auth import hash_password, verify_password, create_token, verify_google_token, verify_google_access_token
+from app.auth import hash_password, verify_password, create_token, verify_google_token, verify_google_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -81,7 +81,7 @@ def google_auth(req: GoogleRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me")
-def me(db: Session = Depends(get_db), user: User = Depends(__import__("app.auth", fromlist=["get_current_user"]).get_current_user)):
+def me(user: User = Depends(get_current_user)):
     return _user_dict(user)
 
 

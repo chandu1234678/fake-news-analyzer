@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 gunicorn
 python-dotenv
-pydantic[email]
+pydantic[email]==2.10.6
 sqlalchemy
 requests
 pandas
