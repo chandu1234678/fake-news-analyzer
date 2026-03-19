@@ -90,36 +90,57 @@ document.getElementById("google-signup-btn").addEventListener("click", doGoogle)
 
 async function doGoogle() {
   hideError();
-  // Use Chrome Identity API — no redirect needed
-  chrome.identity.getAuthToken({ interactive: true }, async (accessToken) => {
-    if (chrome.runtime.lastError || !accessToken) {
+  // Try getAuthToken first (desktop Chrome), fall back to launchWebAuthFlow (Kiwi/Android)
+  if (chrome.identity.getAuthToken) {
+    chrome.identity.getAuthToken({ interactive: true }, async (accessToken) => {
+      if (!chrome.runtime.lastError && accessToken) {
+        await exchangeAccessToken(accessToken);
+      } else {
+        // Fallback for Kiwi Browser / Android
+        await googleWebAuthFlow();
+      }
+    });
+  } else {
+    await googleWebAuthFlow();
+  }
+}
+
+async function googleWebAuthFlow() {
+  const CLIENT_ID = "595122585703-6v7d8602emobounkv3k93fbagih73k7s.apps.googleusercontent.com";
+  const REDIRECT  = chrome.identity.getRedirectURL("oauth2");
+  const authURL   = "https://accounts.google.com/o/oauth2/auth" +
+    `?client_id=${encodeURIComponent(CLIENT_ID)}` +
+    `&response_type=token` +
+    `&redirect_uri=${encodeURIComponent(REDIRECT)}` +
+    `&scope=${encodeURIComponent("openid email profile")}`;
+
+  chrome.identity.launchWebAuthFlow({ url: authURL, interactive: true }, async (responseUrl) => {
+    if (chrome.runtime.lastError || !responseUrl) {
       showError(chrome.runtime.lastError?.message || "Google sign-in cancelled");
       return;
     }
-    // Exchange access token for user info, then get an id_token via tokeninfo
-    try {
-      // Get user info with the access token
-      const infoRes = await fetch(
-        `https://www.googleapis.com/oauth2/v3/userinfo`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (!infoRes.ok) throw new Error("Failed to fetch Google user info");
-      const googleUser = await infoRes.json();
-
-      // Send to our backend — we pass the access token and let backend verify via userinfo
-      const res  = await fetch(`${API}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token: accessToken })
-      });
-      const data = await res.json();
-      if (!res.ok) return showError(data.detail || "Google sign-in failed");
-      await storeAuth(data);
-      window.location.href = "popup.html";
-    } catch(e) {
-      showError("Google sign-in failed: " + e.message);
-    }
+    // Extract access_token from the redirect URL fragment
+    const params = new URLSearchParams(new URL(responseUrl).hash.slice(1));
+    const accessToken = params.get("access_token");
+    if (!accessToken) { showError("Google sign-in failed: no token returned"); return; }
+    await exchangeAccessToken(accessToken);
   });
+}
+
+async function exchangeAccessToken(accessToken) {
+  try {
+    const res  = await fetch(`${API}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token: accessToken })
+    });
+    const data = await res.json();
+    if (!res.ok) return showError(data.detail || "Google sign-in failed");
+    await storeAuth(data);
+    window.location.href = "popup.html";
+  } catch(e) {
+    showError("Google sign-in failed: " + e.message);
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────
