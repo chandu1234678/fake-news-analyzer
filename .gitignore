@@ -1,6 +1,36 @@
+# Environment & secrets
 .env
+*.env
+.env.*
+
+# Python
 __pycache__/
+**/__pycache__/
 *.pyc
-*.db
-node_modules/
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
 .venv/
+venv/
+backend/venv/
+
+# Database
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+
+# ML model artifacts — committed so Render doesn't need to retrain on every deploy
+# Uncomment below if you want to exclude them and retrain on startup instead
+# backend/data/model.joblib
+# backend/data/vectorizer.joblib
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json

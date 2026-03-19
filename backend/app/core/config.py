@@ -1,13 +1,13 @@
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import os
 
-load_dotenv()
+# Explicitly load .env relative to this file's location
+_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+load_dotenv(_env_path)
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not GOOGLE_API_KEY:
-    raise RuntimeError("GOOGLE_API_KEY missing from environment")
-
-if not GEMINI_MODEL:
-    raise RuntimeError("GEMINI_MODEL missing from environment")
+if not any([CEREBRAS_API_KEY, GROQ_API_KEY, GEMINI_API_KEY]):
+    raise RuntimeError("At least one of CEREBRAS_API_KEY, GROQ_API_KEY, or GEMINI_API_KEY must be set")

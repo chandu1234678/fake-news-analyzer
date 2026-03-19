@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard — FactCheck AI</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="page-wrap">
+
+  <header class="page-header">
+    <a href="popup.html" class="back-btn">
+      <span class="material-symbols-outlined ms-20">arrow_back</span>
+    </a>
+    <h1>Dashboard</h1>
+    <div id="user-avatar" class="sidebar-avatar" style="width:26px;height:26px;font-size:11px">?</div>
+  </header>
+
+  <div class="page-body">
+
+    <div class="card">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:2px">Welcome back,</div>
+      <div id="user-name" style="font-size:14px;font-weight:600;color:var(--t1)">Loading...</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div class="card" style="text-align:center;margin-bottom:0">
+        <div id="stat-total" class="stat-num" style="color:var(--accent)">—</div>
+        <div class="stat-lbl">Total Chats</div>
+      </div>
+      <div class="card" style="text-align:center;margin-bottom:0">
+        <div id="stat-real" class="stat-num" style="color:var(--real)">—</div>
+        <div class="stat-lbl">Real</div>
+      </div>
+      <div class="card" style="text-align:center;margin-bottom:0">
+        <div id="stat-fake" class="stat-num" style="color:var(--fake)">—</div>
+        <div class="stat-lbl">Fake</div>
+      </div>
+    </div>
+
+    <div class="card-title" style="margin-bottom:6px">Recent Chats</div>
+    <div id="recent-list" style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--t3)">Loading...</div>
+    </div>
+
+    <div class="card-title" style="margin-bottom:6px">Quick Actions</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <a href="popup.html"    class="quick-action"><span class="material-symbols-outlined">fact_check</span> Fact Check</a>
+      <a href="saved.html"    class="quick-action"><span class="material-symbols-outlined">bookmark</span> Saved</a>
+      <a href="history.html"  class="quick-action"><span class="material-symbols-outlined">history</span> History</a>
+      <a href="settings.html" class="quick-action"><span class="material-symbols-outlined">settings</span> Settings</a>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="popup.html"><span class="material-symbols-outlined">chat</span>Chat</a>
+    <a href="dashboard.html" class="active"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a href="saved.html"><span class="material-symbols-outlined">bookmark</span>Saved</a>
+    <a href="history.html"><span class="material-symbols-outlined">history</span>History</a>
+    <a href="settings.html"><span class="material-symbols-outlined">settings</span>Settings</a>
+  </nav>
+
+</div>
+<script src="config.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

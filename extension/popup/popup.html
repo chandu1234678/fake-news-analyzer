@@ -1,33 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fake News Analyzer</title>
-  <link rel="stylesheet" href="popup.css">
+  <meta name="viewport" content="width=420">
+  <title>FactCheck AI</title>
+  <link rel="stylesheet" href="shared.css">
 </head>
 <body>
-  <div class="app-container">
-    <header>
-      <h3>Fake News Analyzer</h3>
-    </header>
-    
-    <div id="chat-container">
-      <div class="message system">
-        <div class="bubble">
-          Hello! Select text on any webpage and open this popup, or paste text below.
+
+  <!-- Sidebar overlay -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-mark">
+          <span class="material-symbols-outlined">shield</span>
         </div>
+        <span class="sidebar-logo-text">FactCheck AI</span>
       </div>
+      <button id="close-sidebar-btn" class="icon-btn">
+        <span class="material-symbols-outlined ms-16">close</span>
+      </button>
     </div>
-    
-    <div class="input-area">
-      <textarea id="input-text" placeholder="Paste claim or news here..."></textarea>
-      <button id="analyze-btn" title="Analyze">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-        </svg>
+
+    <button id="new-chat-sidebar-btn" class="sidebar-new-btn">
+      <span class="material-symbols-outlined ms-14">add</span>
+      New Chat
+    </button>
+
+    <div id="sessions-list" class="scroll"></div>
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html">
+        <span class="material-symbols-outlined ms-16">grid_view</span> Dashboard
+      </a>
+      <a href="saved.html">
+        <span class="material-symbols-outlined ms-16">bookmark</span> Saved
+      </a>
+      <a href="history.html">
+        <span class="material-symbols-outlined ms-16">history</span> History
+      </a>
+      <a href="settings.html">
+        <span class="material-symbols-outlined ms-16">settings</span> Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div id="sidebar-avatar" class="sidebar-avatar">?</div>
+      <div class="sidebar-user-info">
+        <div id="sidebar-name" class="u-name">—</div>
+        <div id="sidebar-email" class="u-email"></div>
+      </div>
+      <button id="logout-btn" class="logout-btn" title="Sign out">
+        <span class="material-symbols-outlined ms-16">logout</span>
       </button>
     </div>
   </div>
+
+  <!-- Main shell -->
+  <div class="app-shell">
+    <header class="app-header">
+      <button id="open-sidebar-btn" class="icon-btn">
+        <span class="material-symbols-outlined ms-20">menu</span>
+      </button>
+      <div class="header-logo">
+        <div class="logo-mark">
+          <span class="material-symbols-outlined">shield</span>
+        </div>
+        <span id="chat-title" class="logo-text">FactCheck AI</span>
+      </div>
+      <button id="new-chat-btn" class="icon-btn" title="New chat">
+        <span class="material-symbols-outlined ms-18">edit_square</span>
+      </button>
+    </header>
+
+    <div id="chat-container"></div>
+
+    <div class="input-area">
+      <div class="input-box">
+        <textarea id="input-text" rows="1" placeholder="Ask anything or paste a claim…"></textarea>
+        <button id="send-btn">
+          <span class="material-symbols-outlined">send</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
