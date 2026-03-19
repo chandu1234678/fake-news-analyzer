@@ -177,10 +177,7 @@ function showWelcome() {
   const wrap = document.createElement("div");
   wrap.className = "welcome-screen";
   wrap.innerHTML = `
-    <div class="welcome-icon">
-      <span class="material-symbols-outlined ms-20">fact_check</span>
-    </div>
-    <div class="welcome-title">FactCheck AI</div>
+    <div class="welcome-brand"><span class="brand-main">FactChecker</span><span class="brand-ai"> AI</span></div>
     <div class="welcome-sub">Ask me anything or paste a news claim.<br>I'll chat or fact-check automatically.</div>
     <div class="welcome-chips">
       <button class="welcome-chip" id="wc1">📰 Paste a headline to fact-check</button>

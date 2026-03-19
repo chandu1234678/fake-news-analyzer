@@ -17,26 +17,6 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   chrome.storage.local.clear(() => { window.location.href = "login.html"; });
 });
 
-document.getElementById("test-btn").addEventListener("click", async () => {
-  const url    = document.getElementById("api-url").value.trim();
-  const status = document.getElementById("conn-status");
-  status.textContent = "Testing...";
-  status.style.color = "var(--t3)";
-  try {
-    const res  = await fetch(`${url}/health`);
-    const data = await res.json();
-    if (data.status === "ok") {
-      status.textContent = "✓ Connected";
-      status.style.color = "var(--real)";
-    } else {
-      status.textContent = "⚠ Unexpected response";
-      status.style.color = "var(--warn)";
-    }
-  } catch(_) {
-    status.textContent = "✗ Cannot connect — is the backend running?";
-    status.style.color = "var(--fake)";
-  }
-});
 
 // Toggle switches
 ["toggle-autocheck", "toggle-scores"].forEach(id => {
