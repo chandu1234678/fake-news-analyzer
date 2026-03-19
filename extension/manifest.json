@@ -20,7 +20,7 @@
     "https://oauth2.googleapis.com/*"
   ],
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src https://fake-news-analyzer-j6ka.onrender.com http://127.0.0.1:8000 https://*.onrender.com https://www.googleapis.com https://oauth2.googleapis.com"
+    "extension_pages": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src https://fake-news-analyzer-j6ka.onrender.com http://127.0.0.1:8000 https://*.onrender.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com"
   },
   "action": {
     "default_popup": "popup/popup.html",
