@@ -2,7 +2,8 @@ import os
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
+load_dotenv(_env_path)
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 NEWS_API_URL = "https://newsapi.org/v2/everything"

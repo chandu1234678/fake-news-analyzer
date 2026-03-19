@@ -1,4 +1,6 @@
-def decide(ml_fake: float | None, ai_fake: float | None, evidence_score: float | None):
+from typing import Optional
+
+def decide(ml_fake: Optional[float], ai_fake: Optional[float], evidence_score: Optional[float]):
     """
     Decide verdict based on ML, AI, and evidence signals.
     All values represent probability that the claim is FAKE (0–1).
