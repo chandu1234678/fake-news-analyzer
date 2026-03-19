@@ -2,22 +2,23 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "analyze-fake-news",
-    title: "Analyze with Fake News Analyzer",
+    title: "🔍 TruthScan this",
     contexts: ["selection"]
   });
 });
 
-// Handle Context Menu Click
+// Handle Context Menu Click — open popup window with selected text
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "analyze-fake-news") {
     const text = info.selectionText;
-    
-    // Store the text
     chrome.storage.local.set({ selectedText: text }, () => {
-      // We cannot open the popup programmatically.
-      // We can try to notify the user or just let them know to open the popup.
-      // For now, silent save is standard. The popup will pick it up on open.
-      console.log("Text saved for analysis.");
+      // Open the popup as a standalone window
+      chrome.windows.create({
+        url: chrome.runtime.getURL("popup/popup.html"),
+        type: "popup",
+        width: 420,
+        height: 600
+      });
     });
   }
 });
@@ -25,9 +26,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // Handle Messages from Content Script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TEXT_SELECTED") {
-    chrome.storage.local.set({
-      selectedText: message.payload
-    });
+    chrome.storage.local.set({ selectedText: message.payload });
   }
   return true;
 });

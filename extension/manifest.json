@@ -3,7 +3,7 @@
   "name": "FactCheck AI",
   "version": "1.0.0",
   "description": "Real-time fake news detection with AI",
-  "permissions": ["storage", "activeTab", "contextMenus", "identity"],
+  "permissions": ["storage", "activeTab", "contextMenus", "identity", "windows"],
   "oauth2": {
     "client_id": "595122585703-1geqe1e5uqd0lt4emf95kel6hsa3r64c.apps.googleusercontent.com",
     "scopes": ["openid", "email", "profile"]
@@ -52,7 +52,8 @@
         "popup/detail.html", "popup/popup.js", "popup/login.js",
         "popup/dashboard.js", "popup/history.js", "popup/saved.js",
         "popup/settings.js", "popup/detail.js", "popup/config.js",
-        "popup/tailwind.css", "popup/shared.css", "popup/popup.css"
+        "popup/tailwind.css", "popup/shared.css", "popup/popup.css",
+        "icons/logo.png"
       ],
       "matches": ["<all_urls>"]
     }
