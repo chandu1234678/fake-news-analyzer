@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "FactCheck AI",
+  "name": "FactChecker AI",
   "version": "1.0.0",
   "description": "Real-time fake news detection with AI",
   "permissions": ["storage", "activeTab", "contextMenus", "identity", "windows"],
