@@ -2,27 +2,50 @@
 let token = null;
 let sessions = [];
 
+function nav(page) { window.location.href = chrome.runtime.getURL(`popup/${page}`); }
+
 chrome.storage.local.get(["token"], async d => {
-  if (!d.token) { window.location.href = "login.html"; return; }
+  if (!d.token) { nav("login.html"); return; }
   token = d.token;
   await load();
 });
 
 document.getElementById("clear-btn").addEventListener("click", clearAll);
 
+// ── Navigation ────────────────────────────────────────────────
+document.getElementById("back-btn").addEventListener("click",    () => nav("popup.html"));
+document.getElementById("bn-chat").addEventListener("click",      () => nav("popup.html"));
+document.getElementById("bn-dashboard").addEventListener("click", () => nav("dashboard.html"));
+document.getElementById("bn-saved").addEventListener("click",     () => nav("saved.html"));
+document.getElementById("bn-history").addEventListener("click",   () => nav("history.html"));
+document.getElementById("bn-settings").addEventListener("click",  () => nav("settings.html"));
+
 function esc(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
 async function load() {
+  const list = document.getElementById("sessions-list");
+  list.innerHTML = `<div style="font-size:12px;color:var(--t3);text-align:center;padding:32px 0">Loading...</div>`;
   try {
     const res = await fetch(`${API}/history/sessions`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401) { nav("login.html"); return; }
+      throw new Error(`Server error ${res.status}`);
+    }
     sessions = await res.json();
     render();
-  } catch(e) {}
+  } catch(e) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:40px 16px">
+        <div style="font-size:12px;color:var(--fake);margin-bottom:10px">Could not load history</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Backend may be waking up. Try again.</div>
+        <button id="retry-btn" style="padding:7px 18px;border-radius:8px;border:1px solid var(--a-bdr);background:var(--a-dim);color:var(--accent);font-size:12px;font-family:Inter,sans-serif;cursor:pointer">Retry</button>
+      </div>`;
+    document.getElementById("retry-btn").addEventListener("click", load);
+  }
 }
 
 function render() {
@@ -33,8 +56,9 @@ function render() {
       <div style="text-align:center;padding:40px 0">
         <span class="material-symbols-outlined ms-24" style="color:var(--t3)">history</span>
         <div style="font-size:12px;color:var(--t3);margin-top:8px">No chat history yet</div>
-        <a href="popup.html" style="font-size:12px;color:var(--accent);display:block;margin-top:4px">Start a conversation</a>
+        <div style="font-size:12px;color:var(--accent);margin-top:4px;cursor:pointer" id="go-chat">Start a conversation</div>
       </div>`;
+    document.getElementById("go-chat").addEventListener("click", () => nav("popup.html"));
     return;
   }
   sessions.forEach(s => {
@@ -59,9 +83,7 @@ function render() {
 }
 
 function openSession(id) {
-  chrome.storage.local.set({ currentSessionId: id }, () => {
-    window.location.href = "popup.html";
-  });
+  chrome.storage.local.set({ currentSessionId: id }, () => nav("popup.html"));
 }
 
 async function deleteSession(id) {

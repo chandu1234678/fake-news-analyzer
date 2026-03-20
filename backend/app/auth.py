@@ -1,7 +1,7 @@
 import os
 import json
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from jose import JWTError, jwt
@@ -16,7 +16,7 @@ from app.models import User
 
 SECRET_KEY  = os.getenv("JWT_SECRET", "change-me-in-production-use-long-random-string")
 ALGORITHM   = "HS256"
-ACCESS_TTL  = 60 * 24 * 7   # 7 days in minutes
+ACCESS_TTL  = None  # no expiry — tokens last forever
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 bearer = HTTPBearer(auto_error=False)
@@ -32,8 +32,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 # ── JWT helpers ──────────────────────────────────────────────
 def create_token(user_id: int) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TTL)
-    return jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode({"sub": str(user_id)}, SECRET_KEY, algorithm=ALGORITHM)
 
 def decode_token(token: str) -> Optional[int]:
     try:
