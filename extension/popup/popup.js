@@ -23,6 +23,12 @@ inputText.addEventListener("keydown", e => {
 });
 inputText.addEventListener("input", autoResize);
 
+// Sidebar nav — use chrome.runtime.getURL for Kiwi compatibility
+document.getElementById("nav-dashboard").addEventListener("click", () => { window.location.href = chrome.runtime.getURL("popup/dashboard.html"); });
+document.getElementById("nav-saved").addEventListener("click",     () => { window.location.href = chrome.runtime.getURL("popup/saved.html"); });
+document.getElementById("nav-history").addEventListener("click",   () => { window.location.href = chrome.runtime.getURL("popup/history.html"); });
+document.getElementById("nav-settings").addEventListener("click",  () => { window.location.href = chrome.runtime.getURL("popup/settings.html"); });
+
 // ── Init ──────────────────────────────────────────────────────
 chrome.storage.local.get(["token", "user", "currentSessionId"], async d => {
   if (!d.token) { window.location.href = "login.html"; return; }
