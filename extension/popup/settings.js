@@ -1,5 +1,5 @@
 chrome.storage.local.get(["token", "user"], d => {
-  if (!d.token) { window.location.href = "login.html"; return; }
+  if (!d.token) { window.location.href = chrome.runtime.getURL("popup/login.html"); return; }
   if (d.user) {
     const u = d.user;
     document.getElementById("profile-name").textContent  = u.name  || "User";
@@ -14,7 +14,7 @@ chrome.storage.local.get(["token", "user"], d => {
 });
 
 document.getElementById("logout-btn").addEventListener("click", () => {
-  chrome.storage.local.clear(() => { window.location.href = "login.html"; });
+  chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });
 });
 
 
