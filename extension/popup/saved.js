@@ -3,7 +3,7 @@ function esc(s) {
 }
 
 chrome.storage.local.get(["token", "savedClaims"], d => {
-  if (!d.token) { window.location.href = "login.html"; return; }
+  if (!d.token) { window.location.href = chrome.runtime.getURL("popup/login.html"); return; }
   render(d.savedClaims || []);
 });
 

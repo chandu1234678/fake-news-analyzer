@@ -3,11 +3,11 @@ function esc(s) {
 }
 
 document.getElementById("back-btn").addEventListener("click", () => {
-  window.location.href = "popup.html";
+  window.location.href = chrome.runtime.getURL("popup/popup.html");
 });
 
 chrome.storage.local.get(["token", "detailData"], d => {
-  if (!d.token) { window.location.href = "login.html"; return; }
+  if (!d.token) { window.location.href = chrome.runtime.getURL("popup/login.html"); return; }
   if (!d.detailData) return;
   render(d.detailData);
 });

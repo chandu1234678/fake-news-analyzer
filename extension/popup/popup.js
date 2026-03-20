@@ -31,7 +31,7 @@ document.getElementById("nav-settings").addEventListener("click",  () => { windo
 
 // ── Init ──────────────────────────────────────────────────────
 chrome.storage.local.get(["token", "user", "currentSessionId"], async d => {
-  if (!d.token) { window.location.href = "login.html"; return; }
+  if (!d.token) { window.location.href = chrome.runtime.getURL("popup/login.html"); return; }
   token = d.token;
   user  = d.user;
   currentSessionId = d.currentSessionId || null;
@@ -74,7 +74,7 @@ function updateUserUI() {
 }
 
 function doLogout() {
-  chrome.storage.local.clear(() => { window.location.href = "login.html"; });
+  chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });
 }
 
 // ── Sidebar ───────────────────────────────────────────────────
@@ -307,7 +307,7 @@ function addFactCard(data, scroll = true) {
 }
 
 function viewDetail(data) {
-  chrome.storage.local.set({ detailData: data }, () => { window.location.href = "detail.html"; });
+  chrome.storage.local.set({ detailData: data }, () => { window.location.href = chrome.runtime.getURL("popup/detail.html"); });
 }
 
 function saveCard(data) {

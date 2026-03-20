@@ -48,7 +48,7 @@ async function doLogin() {
     const data = await res.json();
     if (!res.ok) return showError(data.detail || "Login failed");
     await storeAuth(data);
-    window.location.href = "popup.html";
+    window.location.href = chrome.runtime.getURL("popup/popup.html");
   } catch(e) {
     showError("Cannot connect to server. Is the backend running?");
   } finally {
@@ -76,7 +76,7 @@ async function doSignup() {
     const data = await res.json();
     if (!res.ok) return showError(data.detail || "Signup failed");
     await storeAuth(data);
-    window.location.href = "popup.html";
+    window.location.href = chrome.runtime.getURL("popup/popup.html");
   } catch(e) {
     showError("Cannot connect to server. Is the backend running?");
   } finally {
@@ -137,7 +137,7 @@ async function exchangeAccessToken(accessToken) {
     const data = await res.json();
     if (!res.ok) return showError(data.detail || "Google sign-in failed");
     await storeAuth(data);
-    window.location.href = "popup.html";
+    window.location.href = chrome.runtime.getURL("popup/popup.html");
   } catch(e) {
     showError("Google sign-in failed: " + e.message);
   }
@@ -152,7 +152,7 @@ function storeAuth(data) {
 
 // Redirect if already logged in
 chrome.storage.local.get(["token"], d => {
-  if (d.token) window.location.href = "popup.html";
+  if (d.token) window.location.href = chrome.runtime.getURL("popup/popup.html");
 });
 
 // Enter key
