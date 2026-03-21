@@ -143,12 +143,6 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         logger.error("OTP email failed for %s: %s", req.email, e)
         db.delete(record)
         db.commit()
-        err = str(e)
-        if "RESEND_DOMAIN_RESTRICTION" in err:
-            raise HTTPException(
-                status_code=400,
-                detail="Password reset is currently only supported for Gmail addresses. Please sign in with Google or contact support."
-            )
         raise HTTPException(status_code=500, detail="Failed to send email. Please try again.")
 
     return {"message": "If that email exists, a code was sent."}
