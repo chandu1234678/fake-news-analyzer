@@ -42,13 +42,17 @@ chrome.storage.local.get(["token", "user", "currentSessionId"], async d => {
   } else {
     showWelcome();
   }
-  chrome.storage.local.get("selectedText", sd => {
-    if (sd.selectedText) {
-      chrome.storage.local.remove("selectedText");
-      inputText.value = sd.selectedText;
-      send();
-    }
-  });
+  // Small delay to ensure storage write from service worker is complete
+  setTimeout(() => {
+    chrome.storage.local.get(["selectedText", "pendingAnalysis"], sd => {
+      if (sd.selectedText && sd.pendingAnalysis) {
+        chrome.storage.local.remove(["selectedText", "pendingAnalysis"]);
+        inputText.value = sd.selectedText;
+        autoResize();
+        send();
+      }
+    });
+  }, 150);
 });
 
 chrome.runtime.onMessage.addListener(msg => {
