@@ -1,6 +1,7 @@
 import os
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
@@ -10,11 +11,17 @@ from app.routes.auth_routes import router as auth_router
 from app.routes.history_routes import router as history_router
 
 
+# ── Suppress /health spam from logs ──────────────────────────
+class _SuppressHealthLogs(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "/health" not in record.getMessage()
+
+logging.getLogger("uvicorn.access").addFilter(_SuppressHealthLogs())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create DB tables
     Base.metadata.create_all(bind=engine)
-    # Train ML model if artifacts are missing
     model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "model.joblib")
     if not os.path.exists(model_path):
         try:
@@ -43,4 +50,5 @@ app.include_router(router)
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health():
-    return {"status": "ok", "version": "2.0.0"}
+    import time
+    return {"status": "ok", "version": "2.0.0", "ts": int(time.time())}
