@@ -1,141 +1,271 @@
-# FactCheck AI
+<![CDATA[# FactChecker AI 🔍
 
-> *A headline walks in, confidence high,*
-> *We run it through models, ask the AI why.*
-> *Three providers race, the fastest one wins,*
-> *The truth comes out — and the fact-check begins.*
-
-A Chrome extension that detects fake news in real time using ML + AI (Cerebras, Groq, Gemini in parallel). Works on desktop Chrome and Kiwi Browser (Android).
+> A Chrome extension that detects fake news in real time using a custom-trained ML model combined with multi-provider AI analysis and live news evidence.
 
 ---
 
-## What it does
+## How It Works
 
-- Paste or select any news headline/claim
-- ML model + AI analysis runs in parallel
-- Returns a verdict: **Real** or **Fake** with confidence score
-- AI explanation from the fastest of Cerebras / Groq / Gemini
-- Evidence from trusted news sources (Reuters, BBC, AP, etc.)
-- Full chat interface — ask anything, not just claims
-- User accounts with Google OAuth or email/password
-- Chat history saved per session
-- Save claims for later reference
-- Works on desktop Chrome and Kiwi Browser on Android
+```mermaid
+flowchart TD
+    A[User pastes a headline or claim] --> B{Is it a claim?}
+    B -- No --> C[General Chat Mode\nCerebras / Groq / Gemini]
+    B -- Yes --> D[Parallel Analysis Pipeline]
+
+    D --> E[🤖 ML Model\nTF-IDF + Logistic Regression]
+    D --> F[🧠 AI Analysis\nCerebras → Groq → Gemini\nfastest wins]
+    D --> G[📰 NewsAPI Evidence\nReal-time article search]
+
+    E --> H[Decision Engine]
+    F --> H
+    G --> H
+
+    H --> I[Final Verdict\nReal / Fake + Confidence %]
+    I --> J[Explanation + Evidence Articles]
+```
+
+---
+
+## The ML Model — Core of the System
+
+This is the heart of FactChecker AI. We trained a custom **TF-IDF + Logistic Regression** classifier on a merged dataset of ~98,000 real-world news articles.
+
+### Training Data
+
+| Dataset | Source | Rows | Label Format |
+|---|---|---|---|
+| Fake.csv + True.csv | LIAR / WELFake | 44,898 | filename (Fake=1, True=0) |
+| fake_news_dataset_44k.csv | Kaggle | 44,898 | 0 / 1 |
+| fake_news_dataset_20k.csv | Kaggle | 20,000 | "fake" / "real" |
+| **Total after dedup** | — | **97,721** | — |
+
+### Model Architecture
+
+```mermaid
+flowchart LR
+    A[Raw Text\ntitle + body] --> B[TF-IDF Vectorizer\n50,000 features\nunigrams + bigrams\nsublinear TF scaling]
+    B --> C[Logistic Regression\nC=5.0, max_iter=1000\nlbfgs solver]
+    C --> D[Fake Probability\n0.0 → 1.0]
+```
+
+### Training Results
+
+```
+📊 Total samples:  97,721
+   Fake:           45,390
+   Real:           52,331
+
+🎯 Test Accuracy:  90%
+
+              precision    recall    f1-score
+   Real          0.90       0.91       0.91
+   Fake          0.89       0.89       0.89
+```
+
+### Why TF-IDF + Logistic Regression?
+
+- Fast inference — no GPU needed, runs on Render free tier
+- Interpretable — you can inspect feature weights
+- Bigrams capture phrases like "breaking news", "sources say", "officials claim"
+- 50k features vs the typical 3k gives much richer vocabulary coverage
+- 90% accuracy is competitive with many deep learning approaches on this task
+
+### Retrain the Model
+
+```bash
+# Add new CSVs to backend/training/ then:
+cd fake-news-extension
+backend\venv\Scripts\python.exe backend\training\train.py
+
+# Commit the updated model
+git add backend/data/model.joblib backend/data/vectorizer.joblib
+git commit -m "retrain: updated model"
+git push
+```
+
+Supported CSV formats the training script handles automatically:
+
+| File | Required Columns |
+|---|---|
+| `Fake.csv` + `True.csv` | `title`, `text` (label from filename) |
+| `fake_news_dataset_44k.csv` | `text`, `label` (0/1) |
+| `fake_news_dataset_20k.csv` | `title`, `text`, `label` (fake/real) |
+
+---
+
+## Decision Engine
+
+The final verdict combines all three signals with weighted scoring:
+
+```mermaid
+flowchart LR
+    A[ML Score\n18% weight] --> D[Weighted Average]
+    B[AI Score\n50% weight] --> D
+    C[News Evidence Score\n32% weight] --> D
+    D --> E{Threshold}
+    E -- score > 0.5 --> F[🔴 FAKE]
+    E -- score ≤ 0.5 --> G[🟢 REAL]
+```
+
+| Signal | Weight | Source |
+|---|---|---|
+| ML Model | 18% | Local TF-IDF classifier |
+| AI Analysis | 50% | Cerebras / Groq / Gemini |
+| News Evidence | 32% | NewsAPI live search |
+
+---
+
+## AI Provider Race
+
+Three AI providers run in parallel. The first to respond wins — giving the fastest possible result with automatic fallback.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Cerebras
+    participant Groq
+    participant Gemini
+
+    App->>Cerebras: analyze claim (parallel)
+    App->>Groq: analyze claim (parallel)
+    App->>Gemini: analyze claim (parallel)
+
+    Cerebras-->>App: ✅ first response wins
+    Note over Groq,Gemini: cancelled / ignored
+```
 
 ---
 
 ## Project Structure
 
 ```
-fake-news-analyzer/
+fake-news-extension/
 ├── backend/
 │   ├── app/
 │   │   ├── analysis/
-│   │   │   ├── ai.py          # Cerebras + Groq + Gemini parallel calls
-│   │   │   ├── chat.py        # General chat + claim detection
-│   │   │   ├── evidence.py    # NewsAPI evidence fetching
-│   │   │   ├── explain.py     # Keyword extractor
-│   │   │   └── ml.py          # Scikit-learn model loader
-│   │   ├── core/
-│   │   │   └── config.py      # Env var loader
+│   │   │   ├── ai.py           # Cerebras + Groq + Gemini parallel
+│   │   │   ├── chat.py         # Chat mode + claim detection
+│   │   │   ├── evidence.py     # NewsAPI evidence fetching
+│   │   │   ├── explain.py      # Keyword extractor
+│   │   │   └── ml.py           # Model loader + inference
 │   │   ├── logic/
-│   │   │   └── decision.py    # Verdict logic (ML + AI + evidence)
+│   │   │   └── decision.py     # Weighted verdict logic
 │   │   ├── routes/
-│   │   │   ├── auth_routes.py
+│   │   │   ├── auth_routes.py  # Signup, login, Google OAuth, OTP reset
 │   │   │   └── history_routes.py
-│   │   ├── api.py             # /message endpoint
-│   │   ├── auth.py            # JWT + Google OAuth helpers
-│   │   ├── main.py            # FastAPI app entry
-│   │   ├── models.py          # SQLAlchemy models
-│   │   └── schemas.py         # Pydantic schemas
+│   │   ├── api.py              # /message endpoint (parallel pipeline)
+│   │   ├── auth.py             # JWT + Google OAuth helpers
+│   │   ├── email_utils.py      # Brevo HTTP API email
+│   │   ├── main.py             # FastAPI app + lifespan
+│   │   ├── models.py           # SQLAlchemy ORM models
+│   │   └── schemas.py          # Pydantic request/response schemas
 │   ├── data/
-│   │   ├── model.joblib       # Trained ML model
-│   │   └── vectorizer.joblib  # TF-IDF vectorizer
+│   │   ├── model.joblib        # Trained classifier (committed to git)
+│   │   └── vectorizer.joblib   # TF-IDF vectorizer (committed to git)
 │   ├── training/
-│   │   ├── fake_news.csv      # Training dataset
-│   │   └── train.py           # Training script
-│   ├── database.py            # SQLAlchemy engine setup
+│   │   ├── train.py            # Training script (multi-dataset merge)
+│   │   ├── Fake.csv            # gitignored — add locally
+│   │   ├── True.csv            # gitignored — add locally
+│   │   ├── fake_news_dataset_44k.csv  # gitignored
+│   │   └── fake_news_dataset_20k.csv  # gitignored
+│   ├── database.py             # SQLAlchemy engine (SQLite + PostgreSQL)
 │   ├── requirements.txt
-│   ├── Procfile               # gunicorn command for Render
-│   └── runtime.txt            # Python 3.11.9
+│   ├── Procfile
+│   └── runtime.txt
 ├── extension/
 │   ├── background/
-│   │   └── service_worker.js
-│   ├── icons/
+│   │   └── service_worker.js   # Context menu + popup launcher
 │   ├── popup/
-│   │   ├── config.js          # API URL (single source of truth)
-│   │   ├── shared.css         # Full design system
-│   │   ├── popup.html/js      # Main chat interface
-│   │   ├── login.html/js      # Auth page
-│   │   ├── dashboard.html/js  # Stats overview
-│   │   ├── history.html/js    # Chat sessions
-│   │   ├── saved.html/js      # Saved claims
-│   │   ├── settings.html/js   # Profile + preferences
-│   │   └── detail.html/js     # Full claim detail view
-│   ├── content.js
-│   └── manifest.json
-├── render.yaml
+│   │   ├── config.js           # API base URL (single source of truth)
+│   │   ├── shared.css          # Full design system
+│   │   ├── popup.html/js       # Main chat + fact-check interface
+│   │   ├── login.html/js       # Email/password + Google OAuth
+│   │   ├── dashboard.html/js   # Stats overview
+│   │   ├── history.html/js     # Chat session history
+│   │   ├── saved.html/js       # Saved claims
+│   │   ├── settings.html/js    # Profile + preferences
+│   │   └── detail.html/js      # Full claim detail view
+│   ├── content.js              # Context menu text selection
+│   └── manifest.json           # Chrome MV3 manifest
+├── render.yaml                 # Render deployment config
 └── README.md
 ```
 
 ---
 
-## Prerequisites
+## Tech Stack
 
-- Python 3.11+
-- Git
-- A Chromium-based browser (Chrome or Kiwi on Android)
-- API keys for: Cerebras, Groq, Gemini, NewsAPI
-- Google Cloud project with OAuth 2.0 credentials
+| Layer | Technology |
+|---|---|
+| Extension | Vanilla JS, Chrome Manifest V3 |
+| UI | Custom CSS design system |
+| Backend | FastAPI + Python 3.11 |
+| Database | PostgreSQL (Render) / SQLite (local) |
+| ML | scikit-learn — TF-IDF + Logistic Regression |
+| AI | Cerebras, Groq, Gemini (parallel race) |
+| News | NewsAPI |
+| Auth | JWT + Google OAuth 2.0 |
+| Email | Brevo HTTP API |
+| Deploy | Render (web service + PostgreSQL) |
 
 ---
 
-## Clone & Run Locally
+## Local Setup
 
-### 1. Clone the repo
+### 1. Clone
 
 ```bash
 git clone https://github.com/chandu1234678/fake-news-analyzer.git
 cd fake-news-analyzer
 ```
 
-### 2. Set up the backend
+### 2. Backend
 
 ```bash
 cd backend
 py -m venv venv
 venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Mac/Linux
 pip install -r requirements.txt
 ```
 
-### 3. Create your `.env` file
-
-Copy the example and fill in your keys:
+### 3. Environment variables
 
 ```bash
 copy .env.example .env
 ```
 
-Edit `backend/.env`:
+Fill in `backend/.env`:
 
 ```env
-CEREBRAS_API_KEY=your_cerebras_key
-GROQ_API_KEY=your_groq_key
-GEMINI_API_KEY=your_gemini_key
-NEWS_API_KEY=your_newsapi_key
+CEREBRAS_API_KEY=your_key
+GROQ_API_KEY=your_key
+GEMINI_API_KEY=your_key
+NEWS_API_KEY=your_key
 DATABASE_URL=sqlite:///./fake_news.db
-JWT_SECRET=some-long-random-secret-string-min-32-chars
+JWT_SECRET=any-long-random-string-32-chars-min
 GOOGLE_CLIENT_ID=your_chrome_extension_oauth_client_id
+BREVO_API_KEY=your_brevo_key
+SMTP_USER=your_verified_sender@gmail.com
 ```
 
-### 4. Train the ML model
+### 4. Add training data and train the model
+
+Drop the CSV files into `backend/training/` (see table above), then:
 
 ```bash
-python training/train.py
+backend\venv\Scripts\python.exe backend\training\train.py
 ```
 
-This creates `backend/data/model.joblib` and `backend/data/vectorizer.joblib`.
+Expected output:
+```
+✅ Dataset 1 (Fake+True): 44898 rows
+✅ Dataset 2 (44k): 44898 rows
+✅ Dataset 3 (20k): 20000 rows
+
+📊 Total samples after merge+dedup: 97721
+🎯 Test accuracy: 0.8989
+✅ Model & vectorizer saved to backend/data/
+```
 
 ### 5. Run the backend
 
@@ -143,189 +273,115 @@ This creates `backend/data/model.joblib` and `backend/data/vectorizer.joblib`.
 uvicorn app.main:app --reload
 ```
 
-Backend runs at `http://127.0.0.1:8000`
+Visit `http://127.0.0.1:8000/health` → `{"status":"ok"}`
 
-Test it: open `http://127.0.0.1:8000/health` — should return `{"status":"ok"}`
+### 6. Load the extension
 
----
+1. Chrome → `chrome://extensions`
+2. Enable Developer mode
+3. Load unpacked → select `extension/` folder
 
-## Load the Extension
-
-1. Open Chrome → `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. Click **Load unpacked**
-4. Select the `extension/` folder
-
-For local development, update `extension/popup/config.js`:
-
-```js
-const API = "http://127.0.0.1:8000";
-```
-
-For production, set it back to your Render URL.
+Set `extension/popup/config.js` to `http://127.0.0.1:8000` for local dev.
 
 ---
 
 ## Deploy to Render
 
-### 1. Push to GitHub
+### 1. Create PostgreSQL on Render
+
+New → PostgreSQL → Free → copy the **Internal Database URL**
+
+### 2. Create Web Service
+
+New → Web Service → connect GitHub repo
+
+| Setting | Value |
+|---|---|
+| Root directory | `backend` |
+| Build command | `pip install -r requirements.txt` |
+| Start command | `gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120` |
+| Health check path | `/health` |
+
+### 3. Set environment variables
+
+Add all keys from `.env` plus `DATABASE_URL` = your PostgreSQL Internal URL.
+
+### 4. Push and deploy
 
 ```bash
 git add .
-git commit -m "initial deploy"
-git push origin main
-```
-
-### 2. Create a Render Web Service
-
-- Go to [render.com](https://render.com) → New → Web Service
-- Connect your GitHub repo
-- Settings:
-  - Root directory: `backend`
-  - Build command: `pip install -r requirements.txt`
-  - Start command: `gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT`
-  - Python version: set `PYTHON_VERSION=3.11.9` in env vars
-
-### 3. Set environment variables on Render
-
-Add all keys from your `.env` file in the Render dashboard under Environment.
-
-### 4. Set health check path
-
-In Render → your service → Settings → Health Check Path: `/health`
-
-### 5. Update extension API URL
-
-In `extension/popup/config.js`:
-
-```js
-const API = "https://your-service-name.onrender.com";
-```
-
----
-
-## Keep Render Awake (Free Tier)
-
-Render free tier sleeps after 15 minutes of inactivity. To prevent this:
-
-1. Go to [uptimerobot.com](https://uptimerobot.com) — free account
-2. Add New Monitor:
-   - Type: `HTTP(s)`
-   - URL: `https://your-service-name.onrender.com/health`
-   - Interval: `5 minutes`
-
-This pings your backend every 5 minutes and keeps it warm 24/7.
-
----
-
-## Google OAuth Setup
-
-You need two OAuth clients in [Google Cloud Console](https://console.cloud.google.com):
-
-### Client 1 — Chrome Extension (for desktop Chrome)
-
-- Type: **Chrome extension**
-- Item ID: your extension ID (find it at `chrome://extensions`)
-- Add to `manifest.json` → `oauth2.client_id`
-- Add to Render env as `GOOGLE_CLIENT_ID`
-
-### Client 2 — Web Application (for Kiwi Browser / Android)
-
-- Type: **Web application**
-- Authorized redirect URIs:
-  ```
-  https://YOUR_EXTENSION_ID.chromiumapp.org/oauth2
-  ```
-- Copy the client ID into `extension/popup/login.js` → `googleWebAuthFlow()` → `CLIENT_ID`
-
----
-
-## Retrain the ML Model
-
-If you want to retrain with new data:
-
-```bash
-cd backend
-venv\Scripts\activate
-python training/train.py
-```
-
-Then commit the new model files:
-
-```bash
-git add backend/data/model.joblib backend/data/vectorizer.joblib
-git commit -m "retrain ML model"
+git commit -m "deploy"
 git push
 ```
 
-Render will redeploy automatically and use the new models.
+Tables are auto-created on first startup via `Base.metadata.create_all()`.
 
 ---
 
-## API Endpoints
+## Keep Render Awake
 
-| Method | Path | Description |
-|--------|------|-------------|
+Render free tier sleeps after 15 min of inactivity. Use [UptimeRobot](https://uptimerobot.com):
+
+- Monitor type: `HTTP(s)`
+- URL: `https://your-service.onrender.com/health`
+- Interval: `5 minutes`
+
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
 | GET/HEAD | `/health` | Health check |
-| POST | `/auth/signup` | Register with email/password |
-| POST | `/auth/login` | Login with email/password |
-| POST | `/auth/google` | Google OAuth (access_token or id_token) |
+| POST | `/auth/signup` | Register with email + password |
+| POST | `/auth/login` | Login with email + password |
+| POST | `/auth/google` | Google OAuth |
 | GET | `/auth/me` | Get current user |
-| POST | `/message` | Send a message / fact-check a claim |
+| POST | `/auth/forgot-password` | Send OTP to email |
+| POST | `/auth/reset-password` | Verify OTP + set new password |
+| POST | `/message` | Fact-check a claim or chat |
 | GET | `/history/sessions` | List chat sessions |
-| POST | `/history/sessions` | Create new session |
-| DELETE | `/history/sessions/{id}` | Delete a session |
-| GET | `/history/sessions/{id}/messages` | Get messages in a session |
+| POST | `/history/sessions` | Create session |
+| DELETE | `/history/sessions/{id}` | Delete session |
+| GET | `/history/sessions/{id}/messages` | Get session messages |
 
 ---
 
-## Tech Stack
+## Environment Variables
 
-| Layer | Tech |
-|-------|------|
-| Extension | Vanilla JS, Chrome MV3 |
-| UI | Custom CSS design system (shared.css) |
-| Backend | FastAPI + Python 3.11 |
-| Database | SQLite (via SQLAlchemy) |
-| ML | scikit-learn (TF-IDF + Logistic Regression) |
-| AI | Cerebras, Groq, Gemini (parallel, first wins) |
-| Auth | JWT + Google OAuth 2.0 |
-| Deploy | Render (free tier) |
-
----
-
-## Environment Variables Reference
-
-| Variable | Description |
-|----------|-------------|
-| `CEREBRAS_API_KEY` | From [cerebras.ai](https://cerebras.ai) |
-| `GROQ_API_KEY` | From [console.groq.com](https://console.groq.com) |
-| `GEMINI_API_KEY` | From [aistudio.google.com](https://aistudio.google.com) |
-| `NEWS_API_KEY` | From [newsapi.org](https://newsapi.org) |
-| `DATABASE_URL` | SQLite path (auto-handled if omitted) |
-| `JWT_SECRET` | Any long random string (min 32 chars) |
-| `GOOGLE_CLIENT_ID` | Chrome extension OAuth client ID |
+| Variable | Where to get it |
+|---|---|
+| `CEREBRAS_API_KEY` | [cerebras.ai](https://cerebras.ai) |
+| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) |
+| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) |
+| `NEWS_API_KEY` | [newsapi.org](https://newsapi.org) |
+| `DATABASE_URL` | Render PostgreSQL internal URL |
+| `JWT_SECRET` | Any random 32+ char string |
+| `GOOGLE_CLIENT_ID` | Google Cloud Console → Chrome extension OAuth client |
+| `BREVO_API_KEY` | [brevo.com](https://brevo.com) |
+| `SMTP_USER` | Verified sender email in Brevo |
 
 ---
 
 ## Common Issues
 
-**Backend 502 on Render**
-- Check build logs — model files might be missing
-- Run `python training/train.py` locally, commit the `.joblib` files, push again
+**`No open HTTP ports detected` on Render**
+- Usually means the app crashed on startup — check Render logs
+- Most common cause: `DATABASE_URL` env var not set or wrong
 
-**Google sign-in not working on Kiwi**
-- Make sure you created a "Web application" OAuth client
+**Google sign-in not working on Kiwi Browser**
+- Create a "Web application" OAuth client in Google Cloud Console
 - Add `https://YOUR_EXTENSION_ID.chromiumapp.org/oauth2` to redirect URIs
-- Update `CLIENT_ID` in `login.js` → `googleWebAuthFlow()`
 
-**Extension not connecting to backend**
-- Check `extension/popup/config.js` has the correct URL
-- Make sure the backend is running and `/health` returns 200
+**ML model missing on Render**
+- The `.joblib` files must be committed to git — Render doesn't run `train.py`
+- Run training locally, `git add backend/data/*.joblib`, commit and push
 
-**ML model too small / not working**
-- The `.joblib` files in git might be stubs — retrain locally and push
+**OTP email not arriving**
+- Check `BREVO_API_KEY` and `SMTP_USER` are set on Render
+- Verify the sender email is confirmed in your Brevo account
 
 ---
 
-*Built with curiosity, caffeine, and a healthy distrust of headlines.*
+*Built with Python, curiosity, and a healthy distrust of headlines.*
+]]>
