@@ -20,6 +20,13 @@ backend/venv/
 *.db
 *.sqlite3
 
+# Large training datasets — train locally, commit model.joblib instead
+backend/training/Fake.csv
+backend/training/True.csv
+backend/training/fake_news_dataset_44k.csv
+backend/training/fake_news_dataset_20k.csv
+backend/training/fake_news.csv
+
 # Node
 node_modules/
 
