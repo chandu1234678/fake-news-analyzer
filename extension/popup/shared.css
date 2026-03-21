@@ -180,7 +180,8 @@ body {
 
 .fill-real { background: var(--real); }
 .fill-fake { background: var(--fake); }
-.fill-ai   { background: var(--accent); opacity: 0.5; }
+.fill-ai   { background: var(--accent); opacity: 0.7; }
+.fill-news { background: #60a5fa; }
 
 .fact-expl {
   font-size: 12px; color: var(--t2); line-height: 1.6;
@@ -188,14 +189,30 @@ body {
 }
 .fact-sources {
   border-top: 1px solid var(--b1); padding-top: 7px;
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.src-label {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 3px;
 }
 .fact-sources a {
   font-size: 11px; color: var(--t3); text-decoration: none;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: color 0.15s;
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 5px 7px; border-radius: 6px;
+  border: 1px solid var(--b1);
+  transition: all 0.15s; overflow: hidden;
 }
-.fact-sources a:hover { color: var(--t2); }
+.fact-sources a:hover { background: var(--s2); color: var(--t2); border-color: var(--b2); }
+.fact-sources .src-name {
+  font-size: 10px; font-weight: 600; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.fact-sources .src-title {
+  font-size: 11px; color: var(--t2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 .fact-actions {
   display: flex; gap: 6px;
