@@ -10,7 +10,7 @@ load_dotenv(_env_path)
 
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-FROM_EMAIL    = os.getenv("SMTP_USER", "factcheckai2@gmail.com")
+FROM_EMAIL    = os.getenv("SMTP_USER", "bc833498@gmail.com")
 FROM_NAME     = "FactChecker AI"
 
 logger = logging.getLogger(__name__)
@@ -25,64 +25,98 @@ def send_otp_email(to_email: str, otp: str) -> bool:
         raise RuntimeError("BREVO_API_KEY is not configured.")
 
     digits = "".join([
-        f'<td style="padding:0 4px;">'
-        f'<div style="width:48px;height:60px;background:#0d1117;border:2px solid #30363d;'
-        f'border-radius:10px;font-size:30px;font-weight:700;color:#c0c1ff;'
-        f'text-align:center;line-height:60px;font-family:monospace;">{d}</div></td>'
+        f'<td style="padding:0 5px;">'
+        f'<div style="width:52px;height:64px;background:#1c2333;border:2px solid #3d4663;'
+        f'border-radius:12px;font-size:32px;font-weight:700;color:#ffffff;'
+        f'text-align:center;line-height:64px;font-family:\'Courier New\',monospace;">{d}</div></td>'
         for d in otp
     ])
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Reset your password</title></head>
-<body style="margin:0;padding:0;background:#090c10;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#090c10;padding:40px 16px;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0"
-  style="max-width:560px;width:100%;background:#0d1117;border-radius:16px;border:1px solid #21262d;overflow:hidden;">
-  <tr><td style="height:3px;background:linear-gradient(90deg,#818cf8,#c0c1ff 40%,#f59e0b 70%,#6ee7b7);"></td></tr>
-  <tr>
-    <td style="padding:32px 40px 24px;">
-      <span style="font-size:20px;font-weight:800;color:#e6edf3;">FactChecker</span>
-      <span style="font-size:20px;font-weight:800;color:#f59e0b;"> AI</span>
-    </td>
-  </tr>
-  <tr><td style="height:1px;background:#21262d;"></td></tr>
-  <tr>
-    <td style="padding:32px 40px 28px;">
-      <p style="margin:0 0 6px;font-size:24px;font-weight:700;color:#e6edf3;">Reset your password</p>
-      <p style="margin:0 0 28px;font-size:14px;color:#8b949e;line-height:1.7;">
-        Enter the code below — it expires in <strong style="color:#c0c1ff;">10 minutes</strong>.
-      </p>
-      <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:28px 20px;margin-bottom:28px;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Password Reset</title>
+</head>
+<body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0"
+        style="max-width:480px;width:100%;background:#161b27;border-radius:20px;
+               border:1px solid #2a3147;overflow:hidden;">
+
+        <!-- Header -->
         <tr>
-          <td align="center">
-            <p style="margin:0 0 18px;font-size:11px;font-weight:600;color:#6e7681;text-transform:uppercase;letter-spacing:0.12em;">Verification Code</p>
-            <table cellpadding="0" cellspacing="0"><tr>{digits}</tr></table>
-            <p style="margin:18px 0 0;font-size:12px;color:#484f58;">Valid for 10 minutes · Single use only</p>
+          <td style="padding:28px 32px 20px;">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding-right:12px;vertical-align:middle;">
+                  <div style="width:40px;height:40px;background:#6c63ff;border-radius:10px;
+                    text-align:center;line-height:40px;font-size:20px;">✓</div>
+                </td>
+                <td style="vertical-align:middle;">
+                  <span style="font-size:18px;font-weight:700;color:#ffffff;">FactChecker</span>
+                  <span style="font-size:18px;font-weight:700;color:#f59e0b;"> AI</span>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
+
+        <!-- Divider -->
+        <tr><td style="height:1px;background:#2a3147;margin:0 32px;"></td></tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:28px 32px;">
+
+            <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ffffff;">
+              Password Reset
+            </p>
+            <p style="margin:0 0 24px;font-size:14px;color:#8892a4;line-height:1.6;">
+              We received a request to reset your password. Use the code below — it's valid for
+              <strong style="color:#ffffff;">10 minutes</strong>.
+            </p>
+
+            <!-- OTP digits -->
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>{digits}</tr>
+            </table>
+
+            <!-- Security tip -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+              style="background:#1c2333;border-radius:12px;padding:14px 16px;margin-bottom:24px;">
+              <tr>
+                <td>
+                  <p style="margin:0;font-size:13px;color:#8892a4;line-height:1.6;">
+                    🔒 <strong style="color:#c9d1d9;">Security tip:</strong> Never share this code with
+                    anyone. FactChecker AI will never ask for it via chat or phone.
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
+              If you didn't request a password reset, you can safely ignore this email.
+              Your account remains secure.
+            </p>
+
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:16px 32px 24px;border-top:1px solid #2a3147;">
+            <p style="margin:0;font-size:12px;color:#4b5563;text-align:center;">
+              Sent by FactChecker AI · {FROM_EMAIL}
+            </p>
+          </td>
+        </tr>
+
       </table>
-      <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#161b22;border-left:3px solid #f59e0b;border-radius:8px;padding:14px 18px;margin-bottom:28px;">
-        <tr><td>
-          <p style="margin:0;font-size:13px;color:#8b949e;">
-            <strong style="color:#f59e0b;">Security notice:</strong> Never share this code.
-          </p>
-        </td></tr>
-      </table>
-      <p style="margin:0;font-size:13px;color:#484f58;">Didn't request this? You can safely ignore this email.</p>
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:18px 40px 24px;border-top:1px solid #21262d;background:#090c10;">
-      <p style="margin:0;font-size:12px;color:#484f58;">Sent by <strong style="color:#6e7681;">FactChecker AI</strong></p>
-    </td>
-  </tr>
-</table>
-</td></tr>
-</table>
+    </td></tr>
+  </table>
 </body>
 </html>"""
 
@@ -93,9 +127,9 @@ def send_otp_email(to_email: str, otp: str) -> bool:
             "Content-Type": "application/json",
         },
         json={
-            "sender":  {"name": FROM_NAME, "email": FROM_EMAIL},
-            "to":      [{"email": to_email}],
-            "subject": f"Your verification code is {otp}",
+            "sender":      {"name": FROM_NAME, "email": FROM_EMAIL},
+            "to":          [{"email": to_email}],
+            "subject":     f"Your verification code is {otp}",
             "htmlContent": html,
         },
         timeout=15,
