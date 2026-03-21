@@ -143,7 +143,7 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         logger.error("OTP email failed for %s: %s", req.email, e)
         db.delete(record)
         db.commit()
-        raise HTTPException(status_code=500, detail=f"Email failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send email. Please try again.")
 
     return {"message": "If that email exists, a code was sent."}
 
