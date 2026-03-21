@@ -8,7 +8,7 @@ _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 load_dotenv(_env_path)
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-RESEND_FROM    = os.getenv("RESEND_FROM", "FactChecker AI <onboarding@resend.dev>")
+RESEND_FROM    = os.getenv("RESEND_FROM") or "FactChecker AI <onboarding@resend.dev>"
 RESEND_API_URL = "https://api.resend.com/emails"
 
 

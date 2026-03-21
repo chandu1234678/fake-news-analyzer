@@ -223,6 +223,7 @@ async function doSendOTP() {
     });
     clearTimeout(timeout);
     const data = await res.json();
+    if (res.status === 429) return showError(data.detail || "Too many requests. Wait a few minutes.");
     if (!res.ok) return showError(data.detail || "Failed to send code");
     _forgotEmail = email;    document.getElementById("form-forgot").style.display = "none";
     document.getElementById("form-reset").style.display  = "block";
@@ -277,7 +278,7 @@ document.getElementById("resend-otp-btn").addEventListener("click", async () => 
     });
     const data = await res.json();
     if (!res.ok) {
-      showError(data.detail || "Failed to resend.");
+      showError(res.status === 429 ? "Too many requests. Wait a few minutes." : (data.detail || "Failed to resend."));
       document.getElementById("resend-otp-btn").style.display = "inline";
       return;
     }

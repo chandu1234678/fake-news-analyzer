@@ -105,13 +105,13 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         # Don't reveal if email exists
         return {"message": "If that email exists, a code was sent."}
 
-    # Rate limit: max 3 OTP requests per 10 minutes
-    window_start = datetime.utcnow() - timedelta(minutes=10)
+    # Rate limit: max 5 OTP requests per 5 minutes
+    window_start = datetime.utcnow() - timedelta(minutes=5)
     recent_count = db.query(PasswordResetOTP).filter(
         PasswordResetOTP.email == req.email,
         PasswordResetOTP.created_at >= window_start,
     ).count()
-    if recent_count >= 3:
+    if recent_count >= 5:
         raise HTTPException(status_code=429, detail="Too many requests. Please wait a few minutes before trying again.")
 
     # Invalidate old unused OTPs for this email
