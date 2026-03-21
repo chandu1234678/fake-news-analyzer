@@ -1,15 +1,22 @@
 import os
 import random
 import string
-import requests
+import smtplib
+import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from dotenv import load_dotenv
 
 _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(_env_path)
 
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-RESEND_FROM    = os.getenv("RESEND_FROM") or "FactChecker AI <onboarding@resend.dev>"
-RESEND_API_URL = "https://api.resend.com/emails"
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+FROM_NAME = "FactChecker AI"
+
+logger = logging.getLogger(__name__)
 
 
 def generate_otp(length: int = 6) -> str:
@@ -17,8 +24,8 @@ def generate_otp(length: int = 6) -> str:
 
 
 def send_otp_email(to_email: str, otp: str) -> bool:
-    if not RESEND_API_KEY or RESEND_API_KEY.startswith("your-"):
-        raise RuntimeError("RESEND_API_KEY is not configured.")
+    if not SMTP_USER or not SMTP_PASSWORD:
+        raise RuntimeError("SMTP credentials are not configured.")
 
     digits = "".join([
         f'<td style="padding:0 4px;">'
@@ -42,12 +49,10 @@ def send_otp_email(to_email: str, otp: str) -> bool:
   style="max-width:560px;width:100%;background:#0d1117;border-radius:16px;
          border:1px solid #21262d;overflow:hidden;">
 
-  <!-- top accent -->
   <tr>
     <td style="height:3px;background:linear-gradient(90deg,#818cf8,#c0c1ff 40%,#f59e0b 70%,#6ee7b7);"></td>
   </tr>
 
-  <!-- header -->
   <tr>
     <td style="padding:32px 40px 24px;">
       <table cellpadding="0" cellspacing="0" role="presentation">
@@ -65,13 +70,10 @@ def send_otp_email(to_email: str, otp: str) -> bool:
     </td>
   </tr>
 
-  <!-- divider -->
-  <tr><td style="height:1px;background:#21262d;margin:0 40px;"></td></tr>
+  <tr><td style="height:1px;background:#21262d;"></td></tr>
 
-  <!-- body -->
   <tr>
     <td style="padding:32px 40px 28px;">
-
       <p style="margin:0 0 6px;font-size:24px;font-weight:700;color:#e6edf3;letter-spacing:-0.02em;">
         Reset your password
       </p>
@@ -80,7 +82,6 @@ def send_otp_email(to_email: str, otp: str) -> bool:
         Enter the code below — it expires in <strong style="color:#c0c1ff;">10 minutes</strong>.
       </p>
 
-      <!-- code block -->
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
         style="background:#161b22;border:1px solid #30363d;border-radius:12px;
                padding:28px 20px;margin-bottom:28px;">
@@ -98,7 +99,6 @@ def send_otp_email(to_email: str, otp: str) -> bool:
         </tr>
       </table>
 
-      <!-- warning box -->
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
         style="background:#161b22;border:1px solid #30363d;border-left:3px solid #f59e0b;
                border-radius:8px;padding:14px 18px;margin-bottom:28px;">
@@ -115,11 +115,9 @@ def send_otp_email(to_email: str, otp: str) -> bool:
       <p style="margin:0;font-size:13px;color:#484f58;line-height:1.7;">
         Didn't request this? You can safely ignore this email — your account is unchanged.
       </p>
-
     </td>
   </tr>
 
-  <!-- footer -->
   <tr>
     <td style="padding:18px 40px 24px;border-top:1px solid #21262d;background:#090c10;">
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
@@ -143,27 +141,15 @@ def send_otp_email(to_email: str, otp: str) -> bool:
 </body>
 </html>"""
 
-    import logging
-    logger = logging.getLogger(__name__)
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Your verification code is {otp}"
+    msg["From"]    = f"{FROM_NAME} <{SMTP_USER}>"
+    msg["To"]      = to_email
+    msg.attach(MIMEText(html, "html"))
 
-    resp = requests.post(
-        RESEND_API_URL,
-        headers={
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "from": RESEND_FROM,
-            "to": [to_email],
-            "subject": f"Your verification code is {otp}",
-            "html": html,
-        },
-        timeout=15,
-    )
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(SMTP_USER, to_email, msg.as_string())
 
-    if resp.status_code not in (200, 201):
-        raise RuntimeError(f"Resend API error {resp.status_code}: {resp.text}")
-
-    email_id = resp.json().get("id", "unknown")
-    logger.info("Resend email queued id=%s to=%s", email_id, to_email)
+    logger.info("OTP email sent via SMTP to %s", to_email)
     return True
