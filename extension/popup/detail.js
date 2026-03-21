@@ -19,7 +19,12 @@ function render(data) {
   const confPct = Math.round((data.confidence || 0) * 100);
   const mlPct   = Math.round((data.ml_score   || 0) * 100);
   const aiPct   = Math.round((data.ai_score   || 0) * 100);
-  const mlFill  = mlPct > 60 ? "fill-fake" : "fill-real";
+  const newsPct = data.evidence_score != null
+    ? Math.round(data.evidence_score * 100)
+    : (data.evidence_articles?.length || data.evidence?.length) ? 60 : 0;
+
+  const mlFill   = mlPct > 50 ? "fill-fake" : "fill-real";
+  const newsFill = newsPct > 50 ? "fill-real" : "fill-fake";
 
   const content = document.getElementById("detail-content");
   content.innerHTML = "";
@@ -47,7 +52,7 @@ function render(data) {
     content.appendChild(claimEl);
   }
 
-  // Scores
+  // Scores — ML + AI + News
   const scoresEl = document.createElement("div");
   scoresEl.className = "card";
   scoresEl.innerHTML = `
@@ -67,10 +72,18 @@ function render(data) {
         </div>
         <div class="score-track" style="height:5px"><div class="score-fill fill-ai ai-bar"></div></div>
       </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:11px;color:var(--t3)">News Evidence</span>
+          <span style="font-size:11px;font-weight:600;color:var(--t1)">${newsPct}%</span>
+        </div>
+        <div class="score-track" style="height:5px"><div class="score-fill ${newsFill} news-bar"></div></div>
+      </div>
     </div>`;
   content.appendChild(scoresEl);
-  scoresEl.querySelector(".ml-bar").style.width = `${mlPct}%`;
-  scoresEl.querySelector(".ai-bar").style.width = `${aiPct}%`;
+  scoresEl.querySelector(".ml-bar").style.width   = `${mlPct}%`;
+  scoresEl.querySelector(".ai-bar").style.width   = `${aiPct}%`;
+  scoresEl.querySelector(".news-bar").style.width = `${newsPct}%`;
 
   // Explanation
   if (data.explanation) {
@@ -82,21 +95,46 @@ function render(data) {
     content.appendChild(explEl);
   }
 
-  // Sources
-  if (data.evidence && data.evidence.length) {
+  // Evidence articles (preferred) or raw URLs
+  const hasArticles = data.evidence_articles && data.evidence_articles.length;
+  const hasUrls     = data.evidence && data.evidence.length;
+
+  if (hasArticles || hasUrls) {
     const srcEl = document.createElement("div");
     srcEl.className = "card";
-    srcEl.innerHTML = `<div class="card-title">Sources</div><div id="sources-list"></div>`;
+    srcEl.innerHTML = `
+      <div class="card-title" style="display:flex;align-items:center;gap:4px">
+        <span class="material-symbols-outlined ms-12">newspaper</span>
+        News Evidence
+      </div>
+      <div id="sources-list"></div>`;
     content.appendChild(srcEl);
-    const srcList = document.getElementById("sources-list");
-    data.evidence.forEach(s => {
-      const a = document.createElement("a");
-      a.href = s;
-      a.target = "_blank";
-      a.style.cssText = "display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);text-decoration:none;margin-bottom:5px;overflow:hidden";
-      a.innerHTML = `<span class="material-symbols-outlined ms-12">open_in_new</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</span>`;
-      srcList.appendChild(a);
-    });
+    const srcList = srcEl.querySelector("#sources-list");
+
+    if (hasArticles) {
+      data.evidence_articles.slice(0, 5).forEach(a => {
+        const el = document.createElement("a");
+        el.href = a.url;
+        el.target = "_blank";
+        el.className = "fact-sources";
+        el.style.cssText = "display:flex;flex-direction:column;gap:2px;padding:7px 9px;border-radius:7px;border:1px solid var(--b1);margin-bottom:5px;text-decoration:none;transition:background 0.15s;";
+        el.innerHTML = `
+          <span style="font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.04em">${esc(a.source)}</span>
+          <span style="font-size:11.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.title)}</span>`;
+        el.addEventListener("mouseover", () => el.style.background = "var(--s2)");
+        el.addEventListener("mouseout",  () => el.style.background = "");
+        srcList.appendChild(el);
+      });
+    } else {
+      data.evidence.slice(0, 5).forEach(s => {
+        const a = document.createElement("a");
+        a.href = s;
+        a.target = "_blank";
+        a.style.cssText = "display:flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);text-decoration:none;margin-bottom:5px;overflow:hidden";
+        a.innerHTML = `<span class="material-symbols-outlined ms-12">open_in_new</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</span>`;
+        srcList.appendChild(a);
+      });
+    }
   }
 }
 
@@ -104,6 +142,15 @@ document.getElementById("save-btn").addEventListener("click", () => {
   chrome.storage.local.get(["savedClaims", "detailData"], d => {
     if (!d.detailData) return;
     const claims = d.savedClaims || [];
+    const isDupe = claims.some(c =>
+      (c.content || c.explanation || "") === (d.detailData.content || d.detailData.explanation || "")
+    );
+    if (isDupe) {
+      const btn = document.getElementById("save-btn");
+      btn.querySelector(".material-symbols-outlined").textContent = "bookmark";
+      btn.style.color = "var(--t3)";
+      return;
+    }
     claims.unshift(d.detailData);
     chrome.storage.local.set({ savedClaims: claims.slice(0, 50) });
     const btn = document.getElementById("save-btn");

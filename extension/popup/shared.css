@@ -464,6 +464,14 @@ textarea#input-text::-webkit-scrollbar { display: none; }
 }
 .google-btn:hover { border-color: var(--b2); color: var(--t1); }
 
+.link-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--t3); font-size: 12px; font-family: 'Inter', sans-serif;
+  padding: 0; text-decoration: none; transition: color 0.15s;
+  outline: none;
+}
+.link-btn:hover { color: var(--t2); }
+
 /* ── Other pages ── */
 .page-wrap {
   display: flex; flex-direction: column;

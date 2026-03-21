@@ -1,4 +1,4 @@
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 import os
 
 # Explicitly load .env relative to this file's location

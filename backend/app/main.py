@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,13 @@ import app.models  # register models
 from app.api import router
 from app.routes.auth_routes import router as auth_router
 from app.routes.history_routes import router as history_router
+
+# ── Logging setup ─────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 # ── Suppress /health spam from logs ──────────────────────────

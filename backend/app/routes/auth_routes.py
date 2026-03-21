@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
+import logging
 
 from database import get_db
 from app.models import User, PasswordResetOTP
@@ -9,6 +10,7 @@ from app.auth import hash_password, verify_password, create_token, verify_google
 from app.email_utils import generate_otp, send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 class SignupRequest(BaseModel):
@@ -136,8 +138,13 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
 
     try:
         send_otp_email(req.email, otp)
+        logger.info("OTP email sent to %s", req.email)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Email send failed: {e}")
+        logger.error("OTP email failed for %s: %s", req.email, e)
+        # Roll back the OTP record since email failed
+        db.delete(record)
+        db.commit()
+        raise HTTPException(status_code=500, detail=f"Email send failed: {str(e)}")
 
     return {"message": "If that email exists, a code was sent."}
 

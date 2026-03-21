@@ -88,10 +88,11 @@ function openSession(id) {
 
 async function deleteSession(id) {
   try {
-    await fetch(`${API}/history/sessions/${id}`, {
+    const res = await fetch(`${API}/history/sessions/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     });
+    if (res.status === 401) { nav("login.html"); return; }
     sessions = sessions.filter(s => s.id !== id);
     render();
   } catch(e) {}
@@ -99,14 +100,12 @@ async function deleteSession(id) {
 
 async function clearAll() {
   if (!confirm("Delete all chat history?")) return;
-  for (const s of sessions) {
-    try {
-      await fetch(`${API}/history/sessions/${s.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    } catch(e) {}
-  }
+  await Promise.allSettled(sessions.map(s =>
+    fetch(`${API}/history/sessions/${s.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    })
+  ));
   sessions = [];
   chrome.storage.local.remove("currentSessionId");
   render();
