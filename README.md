@@ -1,6 +1,10 @@
-# FactChecker AI 🔍
+<p align="center">
+  <img src="extension/icons/logo.png" alt="FactChecker AI Logo" width="200"/>
+</p>
 
-> A Chrome extension that detects fake news in real time using a custom-trained ML model combined with multi-provider AI analysis and live news evidence.
+<h1 align="center">FactChecker AI</h1>
+
+<p align="center">A Chrome extension that detects fake news in real time using a custom-trained ML model combined with multi-provider AI analysis and live news evidence.</p>
 
 ---
 
