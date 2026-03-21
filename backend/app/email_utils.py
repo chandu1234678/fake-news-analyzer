@@ -1,20 +1,16 @@
 import os
 import random
 import string
-import smtplib
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import requests
 from dotenv import load_dotenv
 
 _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(_env_path)
 
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-FROM_NAME = "FactChecker AI"
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM    = os.getenv("RESEND_FROM") or "FactChecker AI <onboarding@resend.dev>"
+RESEND_API_URL = "https://api.resend.com/emails"
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +20,8 @@ def generate_otp(length: int = 6) -> str:
 
 
 def send_otp_email(to_email: str, otp: str) -> bool:
-    if not SMTP_USER or not SMTP_PASSWORD:
-        raise RuntimeError("SMTP credentials are not configured.")
+    if not RESEND_API_KEY:
+        raise RuntimeError("RESEND_API_KEY is not configured.")
 
     digits = "".join([
         f'<td style="padding:0 4px;">'
@@ -141,15 +137,27 @@ def send_otp_email(to_email: str, otp: str) -> bool:
 </body>
 </html>"""
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Your verification code is {otp}"
-    msg["From"]    = f"{FROM_NAME} <{SMTP_USER}>"
-    msg["To"]      = to_email
-    msg.attach(MIMEText(html, "html"))
+    resp = requests.post(
+        RESEND_API_URL,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": RESEND_FROM,
+            "to": [to_email],
+            "subject": f"Your verification code is {otp}",
+            "html": html,
+        },
+        timeout=15,
+    )
 
-    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
-        server.login(SMTP_USER, SMTP_PASSWORD)
-        server.sendmail(SMTP_USER, to_email, msg.as_string())
+    if resp.status_code == 403:
+        raise RuntimeError(f"RESEND_DOMAIN_RESTRICTION:{to_email}")
 
-    logger.info("OTP email sent via SMTP to %s", to_email)
+    if resp.status_code not in (200, 201):
+        raise RuntimeError(f"Resend API error {resp.status_code}: {resp.text}")
+
+    email_id = resp.json().get("id", "unknown")
+    logger.info("OTP email sent via Resend id=%s to=%s", email_id, to_email)
     return True
