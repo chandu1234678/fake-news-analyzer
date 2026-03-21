@@ -143,6 +143,9 @@ def send_otp_email(to_email: str, otp: str) -> bool:
 </body>
 </html>"""
 
+    import logging
+    logger = logging.getLogger(__name__)
+
     resp = requests.post(
         RESEND_API_URL,
         headers={
@@ -152,7 +155,7 @@ def send_otp_email(to_email: str, otp: str) -> bool:
         json={
             "from": RESEND_FROM,
             "to": [to_email],
-            "subject": "Your FactChecker AI reset code",
+            "subject": f"Your verification code is {otp}",
             "html": html,
         },
         timeout=15,
@@ -161,4 +164,6 @@ def send_otp_email(to_email: str, otp: str) -> bool:
     if resp.status_code not in (200, 201):
         raise RuntimeError(f"Resend API error {resp.status_code}: {resp.text}")
 
+    email_id = resp.json().get("id", "unknown")
+    logger.info("Resend email queued id=%s to=%s", email_id, to_email)
     return True

@@ -141,10 +141,15 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         logger.info("OTP email sent to %s", req.email)
     except Exception as e:
         logger.error("OTP email failed for %s: %s", req.email, e)
-        # Roll back the OTP record since email failed
         db.delete(record)
         db.commit()
-        raise HTTPException(status_code=500, detail=f"Email send failed: {str(e)}")
+        err = str(e)
+        if "403" in err or "validation_error" in err:
+            raise HTTPException(
+                status_code=400,
+                detail="This email address is not supported yet. Please use a Gmail or supported address."
+            )
+        raise HTTPException(status_code=500, detail="Failed to send email. Please try again.")
 
     return {"message": "If that email exists, a code was sent."}
 
