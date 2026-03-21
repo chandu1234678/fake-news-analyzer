@@ -178,3 +178,30 @@ def reset_password(req: VerifyOTPRequest, db: Session = Depends(get_db)):
 
 def _user_dict(user: User) -> dict:
     return {"id": user.id, "email": user.email, "name": user.name, "picture": user.picture}
+
+
+@router.get("/debug-email-test")
+def debug_email_test():
+    import os, socket
+    result = {
+        "SMTP_HOST": os.getenv("SMTP_HOST", "NOT SET"),
+        "SMTP_PORT": os.getenv("SMTP_PORT", "NOT SET"),
+        "SMTP_USER": os.getenv("SMTP_USER", "NOT SET"),
+        "SMTP_PASS_SET": bool(os.getenv("SMTP_PASSWORD")),
+    }
+    # Test TCP connectivity to smtp.gmail.com:587
+    for host, port in [("smtp.gmail.com", 587), ("smtp.gmail.com", 465), ("smtp.resend.com", 587)]:
+        try:
+            s = socket.create_connection((host, port), timeout=5)
+            s.close()
+            result[f"tcp_{host}_{port}"] = "OPEN"
+        except Exception as e:
+            result[f"tcp_{host}_{port}"] = f"BLOCKED: {e}"
+    # Try actual send
+    try:
+        from app.email_utils import send_otp_email
+        send_otp_email("bbodapat2@gitam.in", "123456")
+        result["send"] = "SUCCESS"
+    except Exception as e:
+        result["send"] = f"FAILED: {e}"
+    return result
