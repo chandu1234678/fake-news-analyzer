@@ -2,7 +2,6 @@ import os
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
-import os
 
 # Explicitly load .env relative to this file's location (backend/.env)
 _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")

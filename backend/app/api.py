@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
+
+logger = logging.getLogger(__name__)
 
 from database import get_db
 from app.schemas import MessageRequest, MessageResponse
@@ -41,7 +44,7 @@ def _run_pipeline_parallel(text: str):
             try:
                 results[key] = future.result()
             except Exception as e:
-                pass  # keep defaults
+                logger.warning("Pipeline step '%s' failed: %s", key, e)
 
     return results
 
@@ -53,6 +56,10 @@ def message(
     user: Optional[User] = Depends(get_current_user_optional),
 ):
     text = req.message.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if len(text) > 2000:
+        raise HTTPException(status_code=400, detail="Message too long (max 2000 characters)")
 
     # Resolve or create session for logged-in users
     session_id = None

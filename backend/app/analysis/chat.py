@@ -100,8 +100,9 @@ def is_claim(text: str) -> bool:
         result = _first_success(fns)
         return result.strip().lower().startswith("claim")
     except Exception:
-        # Default: treat as claim if unsure
-        return True
+        # Default: treat as chat (not claim) if all AI providers fail
+        # This prevents every message being fact-checked when AI is down
+        return False
 
 
 def run_chat(message: str, history: list) -> str:

@@ -1,5 +1,9 @@
-chrome.storage.local.get(["token", "user"], d => {
+const PREF_KEYS = ["pref_autocheck", "pref_scores"];
+
+chrome.storage.local.get(["token", "user", ...PREF_KEYS], d => {
   if (!d.token) { window.location.href = chrome.runtime.getURL("popup/login.html"); return; }
+
+  // Profile
   if (d.user) {
     const u = d.user;
     document.getElementById("profile-name").textContent  = u.name  || "User";
@@ -11,18 +15,37 @@ chrome.storage.local.get(["token", "user"], d => {
       av.textContent = (u.name || u.email || "?").charAt(0).toUpperCase();
     }
   }
+
+  // Restore toggle states (default ON if never set)
+  const autocheck = d.pref_autocheck !== false;
+  const scores    = d.pref_scores    !== false;
+  setToggle("toggle-autocheck", autocheck);
+  setToggle("toggle-scores",    scores);
+});
+
+// Version from manifest
+const manifest = chrome.runtime.getManifest();
+const vEl = document.getElementById("app-version");
+if (vEl) vEl.textContent = manifest.version || "—";
+
+function setToggle(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (on) el.classList.add("on"); else el.classList.remove("on");
+}
+
+// Toggle switches — persist state
+document.getElementById("toggle-autocheck").addEventListener("click", function() {
+  this.classList.toggle("on");
+  chrome.storage.local.set({ pref_autocheck: this.classList.contains("on") });
+});
+document.getElementById("toggle-scores").addEventListener("click", function() {
+  this.classList.toggle("on");
+  chrome.storage.local.set({ pref_scores: this.classList.contains("on") });
 });
 
 document.getElementById("logout-btn").addEventListener("click", () => {
   chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });
-});
-
-
-// Toggle switches
-["toggle-autocheck", "toggle-scores"].forEach(id => {
-  document.getElementById(id).addEventListener("click", function() {
-    this.classList.toggle("on");
-  });
 });
 
 // ── Navigation ──────────────────────────────────────────────────────────────

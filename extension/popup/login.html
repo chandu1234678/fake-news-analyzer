@@ -35,6 +35,9 @@
         <input id="login-password" type="password" placeholder="••••••••" class="form-input">
       </div>
       <button id="login-btn" class="form-btn">Sign In</button>
+      <div style="text-align:right;margin-top:6px;">
+        <button id="forgot-btn" class="link-btn">Forgot password?</button>
+      </div>
       <div class="divider-row">
         <div class="divider-line"></div>
         <span class="divider-text">or</span>
@@ -80,6 +83,40 @@
         </svg>
         Continue with Google
       </button>
+    </div>
+
+    <!-- Forgot password — step 1: enter email -->
+    <div id="form-forgot" style="display:none">
+      <p style="font-size:12px;color:var(--t3);margin-bottom:14px;">Enter your email and we'll send a 6-digit code.</p>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input id="forgot-email" type="email" placeholder="you@example.com" class="form-input">
+      </div>
+      <button id="send-otp-btn" class="form-btn">Send Code</button>
+      <div style="text-align:center;margin-top:10px;">
+        <button id="back-to-login-btn" class="link-btn">← Back to Sign In</button>
+      </div>
+    </div>
+
+    <!-- Forgot password — step 2: enter OTP + new password -->
+    <div id="form-reset" style="display:none">
+      <p style="font-size:12px;color:var(--t3);margin-bottom:14px;">Enter the 6-digit code sent to your email.</p>
+      <div class="form-group">
+        <label class="form-label">Code</label>
+        <input id="reset-otp" type="text" placeholder="123456" maxlength="6" class="form-input" style="letter-spacing:6px;font-size:18px;text-align:center;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input id="reset-password" type="password" placeholder="Min 6 characters" class="form-input">
+      </div>
+      <button id="reset-btn" class="form-btn">Reset Password</button>
+      <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--t3)">
+        <span id="resend-timer-text">Resend code in <strong id="resend-countdown">60</strong>s</span>
+        <button id="resend-otp-btn" class="link-btn" style="display:none">Resend code</button>
+      </div>
+      <div style="text-align:center;margin-top:8px;">
+        <button id="back-to-login-from-reset-btn" class="link-btn">← Back to Sign In</button>
+      </div>
     </div>
   </div>
 

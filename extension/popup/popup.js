@@ -348,6 +348,8 @@ function viewDetail(data) {
 function saveCard(data) {
   chrome.storage.local.get("savedClaims", d => {
     const claims = d.savedClaims || [];
+    const key = data.content || data.explanation || "";
+    if (claims.some(c => (c.content || c.explanation || "") === key)) return;
     claims.unshift(data);
     chrome.storage.local.set({ savedClaims: claims.slice(0, 50) });
   });
@@ -405,7 +407,7 @@ async function send() {
 
 // ── Helpers ───────────────────────────────────────────────────
 async function authFetch(path, opts = {}) {
-  return fetch(`${API}${path}`, {
+  const res = await fetch(`${API}${path}`, {
     ...opts,
     headers: {
       "Content-Type": "application/json",
@@ -413,6 +415,10 @@ async function authFetch(path, opts = {}) {
       ...(opts.headers || {}),
     }
   });
+  if (res.status === 401) {
+    chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });
+  }
+  return res;
 }
 
 function autoResize() {

@@ -52,7 +52,7 @@
         "popup/detail.html", "popup/popup.js", "popup/login.js",
         "popup/dashboard.js", "popup/history.js", "popup/saved.js",
         "popup/settings.js", "popup/detail.js", "popup/config.js",
-        "popup/tailwind.css", "popup/shared.css", "popup/popup.css",
+        "popup/tailwind.css", "popup/shared.css",
         "icons/logo.png"
       ],
       "matches": ["<all_urls>"]
