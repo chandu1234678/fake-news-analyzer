@@ -2,18 +2,16 @@ import os
 import random
 import string
 import logging
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import requests
 from dotenv import load_dotenv
 
 _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(_env_path)
 
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASSWORD", "")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+FROM_EMAIL    = os.getenv("SMTP_USER", "factcheckai2@gmail.com")
+FROM_NAME     = "FactChecker AI"
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +21,8 @@ def generate_otp(length: int = 6) -> str:
 
 
 def send_otp_email(to_email: str, otp: str) -> bool:
-    if not SMTP_USER or not SMTP_PASS:
-        raise RuntimeError("SMTP credentials not configured.")
+    if not BREVO_API_KEY:
+        raise RuntimeError("BREVO_API_KEY is not configured.")
 
     digits = "".join([
         f'<td style="padding:0 4px;">'
@@ -88,18 +86,23 @@ def send_otp_email(to_email: str, otp: str) -> bool:
 </body>
 </html>"""
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Your verification code is {otp}"
-    msg["From"]    = f"FactChecker AI <{SMTP_USER}>"
-    msg["To"]      = to_email
-    msg.attach(MIMEText(html, "html"))
+    resp = requests.post(
+        BREVO_API_URL,
+        headers={
+            "api-key": BREVO_API_KEY,
+            "Content-Type": "application/json",
+        },
+        json={
+            "sender":  {"name": FROM_NAME, "email": FROM_EMAIL},
+            "to":      [{"email": to_email}],
+            "subject": f"Your verification code is {otp}",
+            "htmlContent": html,
+        },
+        timeout=15,
+    )
 
-    # Gmail SMTP via port 587 + STARTTLS
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.sendmail(SMTP_USER, to_email, msg.as_string())
+    if resp.status_code not in (200, 201):
+        raise RuntimeError(f"Brevo API error {resp.status_code}: {resp.text}")
 
-    logger.info("OTP email sent via SMTP to %s", to_email)
+    logger.info("OTP email sent via Brevo to %s", to_email)
     return True
