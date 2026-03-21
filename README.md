@@ -1,4 +1,4 @@
-<![CDATA[# FactChecker AI 🔍
+# FactChecker AI 🔍
 
 > A Chrome extension that detects fake news in real time using a custom-trained ML model combined with multi-provider AI analysis and live news evidence.
 
@@ -384,4 +384,3 @@ Render free tier sleeps after 15 min of inactivity. Use [UptimeRobot](https://up
 ---
 
 *Built with Python, curiosity, and a healthy distrust of headlines.*
-]]>
