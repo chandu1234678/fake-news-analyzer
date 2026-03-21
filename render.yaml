@@ -20,9 +20,9 @@ services:
         generateValue: true
       - key: GOOGLE_CLIENT_ID
         sync: false
-      - key: RESEND_API_KEY
+      - key: BREVO_API_KEY
         sync: false
-      - key: RESEND_FROM
+      - key: SMTP_USER
         sync: false
       - key: DATABASE_URL
-        value: sqlite:///./fake_news.db
+        sync: false
