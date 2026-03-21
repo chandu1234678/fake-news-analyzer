@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
+from datetime import datetime, timedelta
 
 from database import get_db
-from app.models import User
+from app.models import User, PasswordResetOTP
 from app.auth import hash_password, verify_password, create_token, verify_google_token, verify_google_access_token, get_current_user
+from app.email_utils import generate_otp, send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -26,11 +28,19 @@ class AuthResponse(BaseModel):
     token: str
     user: dict
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyOTPRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
 
 @router.post("/signup", response_model=AuthResponse)
 def signup(req: SignupRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == req.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Try signing in instead.")
     user = User(
         email=req.email,
         name=req.name or req.email.split("@")[0],
@@ -83,6 +93,66 @@ def google_auth(req: GoogleRequest, db: Session = Depends(get_db)):
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
     return _user_dict(user)
+
+
+@router.post("/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Send OTP to email. Works for both email/password AND Google-only users."""
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        # Don't reveal if email exists
+        return {"message": "If that email exists, a code was sent."}
+
+    # Invalidate old OTPs for this email
+    db.query(PasswordResetOTP).filter(
+        PasswordResetOTP.email == req.email,
+        PasswordResetOTP.used == False
+    ).update({"used": True})
+    db.commit()
+
+    otp = generate_otp()
+    record = PasswordResetOTP(
+        email=req.email,
+        otp=otp,
+        expires_at=datetime.utcnow() + timedelta(minutes=10),
+    )
+    db.add(record)
+    db.commit()
+
+    try:
+        send_otp_email(req.email, otp)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email send failed: {e}")
+
+    return {"message": "If that email exists, a code was sent."}
+
+
+@router.post("/reset-password")
+def reset_password(req: VerifyOTPRequest, db: Session = Depends(get_db)):
+    """Verify OTP and set new password. Works for Google users too (sets a password)."""
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    record = db.query(PasswordResetOTP).filter(
+        PasswordResetOTP.email == req.email,
+        PasswordResetOTP.otp == req.otp,
+        PasswordResetOTP.used == False,
+        PasswordResetOTP.expires_at > datetime.utcnow(),
+    ).first()
+
+    if not record:
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Set password — works for both email users (reset) and Google users (first-time set)
+    user.hashed_pw = hash_password(req.new_password)
+    record.used = True
+    db.commit()
+
+    return {"message": "Password updated successfully"}
 
 
 def _user_dict(user: User) -> dict:

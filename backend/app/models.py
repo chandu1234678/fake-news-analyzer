@@ -10,13 +10,24 @@ class User(Base):
     id           = Column(Integer, primary_key=True, index=True)
     email        = Column(String, unique=True, index=True, nullable=False)
     name         = Column(String, nullable=True)
-    picture      = Column(String, nullable=True)          # Google avatar URL
-    hashed_pw    = Column(String, nullable=True)          # None for Google-only users
+    picture      = Column(String, nullable=True)
+    hashed_pw    = Column(String, nullable=True)
     google_id    = Column(String, unique=True, nullable=True)
     is_active    = Column(Boolean, default=True)
     created_at   = Column(DateTime, default=datetime.utcnow)
 
     sessions     = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
+
+
+class PasswordResetOTP(Base):
+    __tablename__ = "password_reset_otps"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    email      = Column(String, index=True, nullable=False)
+    otp        = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used       = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class ChatSession(Base):
