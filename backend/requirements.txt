@@ -17,4 +17,3 @@ google-auth-oauthlib
 httpx
 groq
 cerebras-cloud-sdk
-resend
