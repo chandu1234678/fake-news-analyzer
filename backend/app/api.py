@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from database import get_db
 from app.schemas import MessageRequest, MessageResponse
 from app.analysis.ml import run_ml_analysis
 from app.analysis.ai import run_ai_analysis
-from app.analysis.explain import explain
 from app.analysis.evidence import fetch_evidence
 from app.analysis.chat import is_claim, run_chat
 from app.logic.decision import decide
@@ -15,6 +15,35 @@ from app.models import User, ChatSession
 from app.routes.history_routes import save_message
 
 router = APIRouter()
+
+
+def _run_pipeline_parallel(text: str):
+    """Run ML, AI, and NewsAPI evidence all in parallel for speed."""
+    results = {"ml": None, "ai": (None, ""), "evidence": (None, [], [])}
+
+    def do_ml():
+        return run_ml_analysis(text)
+
+    def do_ai():
+        return run_ai_analysis(text)
+
+    def do_evidence():
+        return fetch_evidence(text)
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(do_ml): "ml",
+            executor.submit(do_ai): "ai",
+            executor.submit(do_evidence): "evidence",
+        }
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                results[key] = future.result()
+            except Exception as e:
+                pass  # keep defaults
+
+    return results
 
 
 @router.post("/message", response_model=MessageResponse)
@@ -29,7 +58,10 @@ def message(
     session_id = None
     if user:
         if req.session_id:
-            s = db.query(ChatSession).filter(ChatSession.id == req.session_id, ChatSession.user_id == user.id).first()
+            s = db.query(ChatSession).filter(
+                ChatSession.id == req.session_id,
+                ChatSession.user_id == user.id
+            ).first()
             session_id = s.id if s else None
         if not session_id:
             s = ChatSession(user_id=user.id, title="New Chat")
@@ -38,11 +70,12 @@ def message(
             db.refresh(s)
             session_id = s.id
 
-    # Build history from DB if logged in, else use request history
+    # Build history
     if session_id:
-        from app.routes.history_routes import _msg_dict
         from app.models import ChatMessage
-        db_msgs = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at).all()
+        db_msgs = db.query(ChatMessage).filter(
+            ChatMessage.session_id == session_id
+        ).order_by(ChatMessage.created_at).all()
         history = [{"role": m.role, "content": m.content} for m in db_msgs[-12:]]
     else:
         history = req.history or []
@@ -51,21 +84,33 @@ def message(
     if session_id:
         save_message(db, session_id, "user", text)
 
+    # Chat vs claim
     if not is_claim(text):
         reply = run_chat(text, history)
         if session_id:
             save_message(db, session_id, "assistant", reply)
         return {"is_claim": False, "session_id": session_id, "reply": reply}
 
-    # Full fact-check pipeline
-    ml = run_ml_analysis(text)
-    raw_ai_score, explanation = run_ai_analysis(text)
-    ai_score = float(raw_ai_score) if raw_ai_score is not None else 0.0
-    evidence_score, evidence_sources = fetch_evidence(text)
+    # ── Run all three in parallel ──────────────────────────────
+    pipeline = _run_pipeline_parallel(text)
+
+    ml_result = pipeline["ml"] or {"fake": 0.5}
+    raw_ai_score, explanation = pipeline["ai"] if pipeline["ai"] else (None, "")
+    evidence_score, evidence_urls, evidence_articles = pipeline["evidence"] if pipeline["evidence"] else (None, [], [])
+
+    ai_score = float(raw_ai_score) if raw_ai_score is not None else 0.5
+
+    # ── Decision ───────────────────────────────────────────────
     verdict, confidence = decide(
-        ml_fake=ml["fake"],
+        ml_fake=ml_result["fake"],
         ai_fake=ai_score,
         evidence_score=evidence_score,
+    )
+
+    # Build evidence display: prefer article URLs, fallback to plain URLs
+    display_evidence = (
+        [a["url"] for a in evidence_articles if a.get("url")]
+        or evidence_urls
     )
 
     result = {
@@ -73,10 +118,12 @@ def message(
         "session_id": session_id,
         "verdict": verdict,
         "confidence": confidence,
-        "ml_score": ml["fake"],
+        "ml_score": ml_result["fake"],
         "ai_score": ai_score,
+        "evidence_score": evidence_score,
         "explanation": explanation,
-        "evidence": evidence_sources or [],
+        "evidence": display_evidence,
+        "evidence_articles": evidence_articles,
     }
 
     if session_id:
@@ -84,10 +131,10 @@ def message(
             "is_claim": True,
             "verdict": verdict,
             "confidence": confidence,
-            "ml_score": ml["fake"],
+            "ml_score": ml_result["fake"],
             "ai_score": ai_score,
             "explanation": explanation,
-            "evidence": evidence_sources or [],
+            "evidence": display_evidence,
         })
 
     return result

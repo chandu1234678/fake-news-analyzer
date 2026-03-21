@@ -243,23 +243,49 @@ function addChatReply(text, scroll = true) {
 }
 
 function addFactCard(data, scroll = true) {
-  const verdict = (data.verdict || "uncertain").toLowerCase();
-  const confPct = Math.round((data.confidence || 0) * 100);
-  const mlPct   = Math.round((data.ml_score   || 0) * 100);
-  const aiPct   = Math.round((data.ai_score   || 0) * 100);
+  const verdict  = (data.verdict || "uncertain").toLowerCase();
+  const confPct  = Math.round((data.confidence || 0) * 100);
+  const mlPct    = Math.round((data.ml_score   || 0) * 100);
+  const aiPct    = Math.round((data.ai_score   || 0) * 100);
+  // News score: evidence_score is a REAL signal (1=real), display as corroboration %
+  const newsPct  = data.evidence_score != null
+    ? Math.round(data.evidence_score * 100)
+    : (data.evidence_articles?.length || data.evidence?.length) ? 60 : 0;
+
   const vClass  = verdict === "real" ? "v-real" : verdict === "fake" ? "v-fake" : "v-uncertain";
   const vIcon   = verdict === "real" ? "check_circle" : verdict === "fake" ? "cancel" : "help";
-  const mlFill  = mlPct > 60 ? "fill-fake" : "fill-real";
+  const mlFill  = mlPct > 50 ? "fill-fake" : "fill-real";
+  const newsFill = newsPct > 50 ? "fill-real" : "fill-fake";
 
-  const srcHtml = (data.evidence && data.evidence.length)
-    ? data.evidence.slice(0, 3).map(s => `<a href="${esc(s)}" target="_blank">↗ ${esc(s)}</a>`).join("")
-    : `<span style="font-size:11px;color:var(--t3)">No sources found</span>`;
+  // Evidence section — shown after explanation
+  const hasArticles = data.evidence_articles && data.evidence_articles.length;
+  const hasUrls     = data.evidence && data.evidence.length;
+
+  let srcHtml = "";
+  if (hasArticles) {
+    srcHtml = data.evidence_articles.slice(0, 4).map(a =>
+      `<a href="${esc(a.url)}" target="_blank">
+        <span class="src-name">${esc(a.source)}</span>
+        <span class="src-title">${esc(a.title)}</span>
+      </a>`
+    ).join("");
+  } else if (hasUrls) {
+    srcHtml = data.evidence.slice(0, 4).map(s =>
+      `<a href="${esc(s)}" target="_blank">↗ ${esc(s)}</a>`
+    ).join("");
+  }
 
   const explHtml = data.explanation
     ? `<div class="fact-expl">${esc(data.explanation)}</div>` : "";
 
-  const srcSection = (data.evidence && data.evidence.length)
-    ? `<div class="fact-sources">${srcHtml}</div>` : "";
+  const srcSection = srcHtml
+    ? `<div class="fact-sources">
+        <div class="src-label">
+          <span class="material-symbols-outlined ms-12">newspaper</span>
+          News Evidence
+        </div>
+        ${srcHtml}
+      </div>` : "";
 
   const row = document.createElement("div");
   row.className = "bot-row";
@@ -289,6 +315,11 @@ function addFactCard(data, scroll = true) {
         <div class="score-track"><div class="score-fill fill-ai ai-bar"></div></div>
         <span class="score-num">${aiPct}%</span>
       </div>
+      <div class="score-row">
+        <span class="score-lbl">News</span>
+        <div class="score-track"><div class="score-fill ${newsFill} news-bar"></div></div>
+        <span class="score-num">${newsPct}%</span>
+      </div>
       ${explHtml}
       ${srcSection}
       <div class="fact-actions">
@@ -301,9 +332,9 @@ function addFactCard(data, scroll = true) {
   row.appendChild(card);
   chatContainer.appendChild(row);
 
-  // Set bar widths via JS after DOM insertion
-  card.querySelector(".ml-bar").style.width = `${mlPct}%`;
-  card.querySelector(".ai-bar").style.width = `${aiPct}%`;
+  card.querySelector(".ml-bar").style.width   = `${mlPct}%`;
+  card.querySelector(".ai-bar").style.width   = `${aiPct}%`;
+  card.querySelector(".news-bar").style.width = `${newsPct}%`;
   card.querySelector(".view-btn").addEventListener("click", () => viewDetail(data));
   card.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
 

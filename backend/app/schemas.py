@@ -16,3 +16,5 @@ class MessageResponse(BaseModel):
     ai_score: Optional[float] = None
     explanation: Optional[str] = None
     evidence: Optional[List[str]] = None
+    evidence_score: Optional[float] = None
+    evidence_articles: Optional[List[dict]] = None
