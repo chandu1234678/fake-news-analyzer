@@ -178,3 +178,22 @@ def reset_password(req: VerifyOTPRequest, db: Session = Depends(get_db)):
 
 def _user_dict(user: User) -> dict:
     return {"id": user.id, "email": user.email, "name": user.name, "picture": user.picture}
+
+
+@router.get("/debug-email")
+def debug_email():
+    """Temporary: test email sending from this server."""
+    import os
+    results = {
+        "SMTP_HOST": os.getenv("SMTP_HOST", "NOT SET"),
+        "SMTP_PORT": os.getenv("SMTP_PORT", "NOT SET"),
+        "SMTP_USER": os.getenv("SMTP_USER", "NOT SET"),
+        "SMTP_PASSWORD_SET": bool(os.getenv("SMTP_PASSWORD")),
+    }
+    try:
+        send_otp_email("bbodapat2@gitam.in", "999888")
+        results["status"] = "SUCCESS"
+    except Exception as e:
+        results["status"] = "FAILED"
+        results["error"] = str(e)
+    return results
