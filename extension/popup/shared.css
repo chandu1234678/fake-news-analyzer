@@ -713,3 +713,35 @@ textarea#input-text::-webkit-scrollbar { display: none; }
 .feedback-real   { background: rgba(110,231,183,.12) !important; color: var(--real) !important; }
 .feedback-fake   { background: rgba(248,113,113,.12) !important; color: var(--fake) !important; }
 .feedback-cancel { background: transparent !important; color: var(--t3) !important; }
+
+/* ── Highlighted suspicious phrases ─────────────────────────── */
+.highlights-section {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 6px 0;
+}
+.hl-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.hl-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: default;
+  letter-spacing: 0.02em;
+}
+.hl-high { background: rgba(248,113,113,.18); color: #f87171; border: 1px solid rgba(248,113,113,.3); }
+.hl-med  { background: rgba(251,191,36,.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+.hl-low  { background: rgba(148,163,184,.12); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+
+/* ── Temporal verdict change notice ─────────────────────────── */
+.verdict-changed-note {
+  font-size: 10px;
+  color: #fbbf24;
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-top: 6px;
+}

@@ -376,6 +376,27 @@ function addFactCard(data, scroll = true) {
       </div>`;
   }
 
+  // Highlighted suspicious phrases
+  let highlightHtml = "";
+  if (data.highlights?.length) {
+    const tags = data.highlights.map(h => {
+      const cls = h.score >= 0.75 ? "hl-high" : h.score >= 0.5 ? "hl-med" : "hl-low";
+      const tip = h.reason === "sensational" ? "Sensational language"
+                : h.reason === "emotional"   ? "Emotional language"
+                : h.reason === "absolute_claim" ? "Absolute claim"
+                : "ML signal";
+      return `<span class="hl-tag ${cls}" title="${tip}">${esc(h.phrase)}</span>`;
+    }).join("");
+    highlightHtml = `
+      <div class="highlights-section">
+        <div class="src-label">
+          <span class="material-symbols-outlined ms-12">flag</span>
+          Suspicious phrases
+        </div>
+        <div class="hl-tags">${tags}</div>
+      </div>`;
+  }
+
   const explHtml = data.explanation
     ? `<div class="fact-expl">${esc(data.explanation)}</div>` : "";
 
@@ -457,6 +478,7 @@ function addFactCard(data, scroll = true) {
         Analyzed from ${srcCount} source${srcCount !== 1 ? "s" : ""} · Bias checked · ML + AI + News
       </div>
       ${verdict === "uncertain" ? `<div class="uncertain-note">Signals conflict or evidence is insufficient for a definitive verdict.</div>` : ""}
+      ${data.verdict_changed ? `<div class="verdict-changed-note">⚠️ This claim's verdict has changed since it was last checked.</div>` : ""}
     </div>
     <div class="fact-body">
       <div class="score-row">
@@ -476,6 +498,7 @@ function addFactCard(data, scroll = true) {
       </div>
       ${manipHtml}
       ${subClaimsHtml}
+      ${highlightHtml}
       ${explHtml}
       ${stanceHtml}
       ${srcSection}

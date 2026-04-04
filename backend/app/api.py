@@ -16,6 +16,7 @@ from app.analysis.chat import is_claim, run_chat
 from app.analysis.manipulation import analyze_manipulation
 from app.analysis.claim_extractor import extract_claims
 from app.analysis.drift import record as record_drift
+from app.analysis.highlight import get_highlights
 from app.logic.decision import decide
 from app.auth import get_current_user_optional
 from app.models import User, ChatSession
@@ -147,6 +148,8 @@ def message(
 
     # Manipulation analysis (fast, no API call)
     manip_score, manip_signals = analyze_manipulation(text)
+    # Highlighted suspicious phrases
+    highlights = get_highlights(text) if verdict == "fake" or manip_score > 0.2 else []
     # ── Decision ───────────────────────────────────────────────
     verdict, confidence = decide(
         ml_fake=ml_result["fake"],
@@ -162,6 +165,28 @@ def message(
 
     # Record for drift detection
     record_drift(verdict, confidence)
+
+    # Temporal claim tracking
+    import hashlib
+    from app.models import ClaimRecord
+    claim_hash = hashlib.sha256(primary_claim.lower().strip().encode()).hexdigest()
+    db.add(ClaimRecord(
+        claim_hash=claim_hash,
+        claim_text=primary_claim[:500],
+        verdict=verdict,
+        confidence=confidence,
+        ml_score=ml_result["fake"],
+        ai_score=ai_score,
+        evidence_score=evidence_score,
+    ))
+    db.commit()
+
+    # Check if this claim has been seen before with a different verdict
+    prior = db.query(ClaimRecord).filter(
+        ClaimRecord.claim_hash == claim_hash,
+        ClaimRecord.verdict != verdict,
+    ).count()
+    verdict_changed = prior > 0
 
     # Stance summary for frontend contradiction meter
     stance_summary = {"support": 0, "contradict": 0, "neutral": 0}
@@ -183,8 +208,10 @@ def message(
         "stance_summary": stance_summary,
         "manipulation_score": manip_score,
         "manipulation_signals": manip_signals,
+        "highlights": highlights,
         "sub_claims": sub_claims if len(sub_claims) > 1 else None,
         "primary_claim": primary_claim if len(sub_claims) > 1 else None,
+        "verdict_changed": verdict_changed,
     }
 
     if session_id:

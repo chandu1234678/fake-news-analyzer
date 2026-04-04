@@ -78,3 +78,18 @@ class UserFeedback(Base):
     created_at  = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="feedbacks")
+
+
+class ClaimRecord(Base):
+    """Tracks every time a claim is verified — enables temporal analysis."""
+    __tablename__ = "claim_records"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    claim_hash  = Column(String(64), index=True, nullable=False)  # SHA256 of normalized claim
+    claim_text  = Column(Text, nullable=False)
+    verdict     = Column(String, nullable=False)
+    confidence  = Column(Float, nullable=True)
+    ml_score    = Column(Float, nullable=True)
+    ai_score    = Column(Float, nullable=True)
+    evidence_score = Column(Float, nullable=True)
+    created_at  = Column(DateTime, default=datetime.utcnow, index=True)
