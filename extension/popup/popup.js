@@ -274,26 +274,27 @@ function addTyping() {
   row.innerHTML = `
     <div class="bot-avatar"><span class="material-symbols-outlined">fact_check</span></div>
     <div class="bot-bubble typing-status">
-      <span class="typing-step active" id="ts1">Analyzing claim...</span>
+      <span class="typing-step" id="ts1">Analyzing claim...</span>
       <span class="typing-step" id="ts2">Checking sources...</span>
       <span class="typing-step" id="ts3">Computing verdict...</span>
     </div>`;
   chatContainer.appendChild(row);
   scrollBottom();
 
-  // Cycle through steps to feel alive
-  let step = 0;
+  // Show only one step at a time, cycling
   const steps = row.querySelectorAll(".typing-step");
+  let step = 0;
+  steps[0].classList.add("active");
+
   const timer = setInterval(() => {
-    steps.forEach(s => s.classList.remove("active"));
+    steps[step].classList.remove("active");
     step = (step + 1) % steps.length;
     steps[step].classList.add("active");
   }, 1400);
-  row._clearTimer = () => clearInterval(timer);
 
+  row._clearTimer = () => clearInterval(timer);
   const origRemove = row.remove.bind(row);
   row.remove = () => { row._clearTimer(); origRemove(); };
-
   return row;
 }
 
@@ -305,11 +306,18 @@ function addChatReply(text, scroll = true) {
   avatar.innerHTML = `<span class="material-symbols-outlined">smart_toy</span>`;
   const bubble = document.createElement("div");
   bubble.className = "bot-bubble";
-  bubble.textContent = text;
   row.appendChild(avatar);
   row.appendChild(bubble);
   chatContainer.appendChild(row);
-  if (scroll) scrollBottom();
+
+  // Typewriter effect
+  let i = 0;
+  const tw = setInterval(() => {
+    bubble.textContent += text[i];
+    i++;
+    if (i >= text.length) clearInterval(tw);
+    if (scroll) scrollBottom();
+  }, 14);
 }
 
 function addFactCard(data, scroll = true) {
@@ -520,6 +528,20 @@ function addFactCard(data, scroll = true) {
   card.querySelector(".view-btn").addEventListener("click", () => viewDetail(data));
   card.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
   card.querySelector(".feedback-btn").addEventListener("click", () => showFeedback(card, data));
+
+  // Typewriter effect on explanation
+  const explEl = card.querySelector(".fact-expl");
+  if (explEl && data.explanation) {
+    const full = data.explanation;
+    explEl.textContent = "";
+    let i = 0;
+    const tw = setInterval(() => {
+      explEl.textContent += full[i];
+      i++;
+      if (i >= full.length) clearInterval(tw);
+      scrollBottom();
+    }, 12);
+  }
 
   if (scroll) scrollBottom();
 }
