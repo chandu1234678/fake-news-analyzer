@@ -200,6 +200,12 @@ body {
   font-size: 10px; color: var(--t3);
   letter-spacing: 0.02em; margin-top: 2px;
 }
+.uncertain-note {
+  font-size: 11px; color: var(--warn);
+  background: rgba(252,211,77,0.07);
+  border-radius: 6px; padding: 5px 8px;
+  line-height: 1.5; margin-top: 2px;
+}
 
 /* ── Stance / Contradiction meter ── */
 .stance-meter {

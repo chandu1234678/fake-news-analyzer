@@ -17,9 +17,9 @@
 - [x] 10. Retrain ML model on 98k samples (90% accuracy, bigrams, 50k features)
 - [x] 11. Replace heuristic AI scoring — make LLM return structured JSON verdict
 - [x] 12. Evidence stance scoring — classify each source as support / contradict / neutral
-- [ ] 13. Meta-decision model — train a small model on ML + AI + evidence scores instead of fixed weights
+- [x] 13. Meta-decision model — train a small model on ML + AI + evidence scores instead of fixed weights
 - [ ] 14. Confidence calibration — add temperature scaling, plot reliability curve
-- [ ] 15. Uncertainty output — return "Insufficient evidence" when confidence is low and sources conflict
+- [x] 15. Uncertainty output — return "Insufficient evidence" when confidence is low and sources conflict
 - [ ] 16. Ablation study — measure F1 with/without each pipeline component
 
 ## Architecture / Robustness

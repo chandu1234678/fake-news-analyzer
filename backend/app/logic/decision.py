@@ -67,6 +67,7 @@ def decide(
     Combine ML + AI + evidence scores into a final verdict.
 
     Uses trained meta-model when available, heuristic as fallback.
+    Returns "uncertain" when signals conflict heavily or evidence is too weak.
 
     Args:
         ml_fake:        0–1, probability claim is FAKE (TF-IDF model)
@@ -76,21 +77,37 @@ def decide(
     Returns:
         (verdict: str, confidence: float)
     """
-    ml  = float(ml_fake)       if ml_fake       is not None else 0.5
-    ai  = float(ai_fake)       if ai_fake        is not None else 0.5
+    ml  = float(ml_fake)        if ml_fake        is not None else 0.5
+    ai  = float(ai_fake)        if ai_fake        is not None else 0.5
     ev  = float(evidence_score) if evidence_score is not None else 0.5
+
+    # ── Uncertainty detection (before model inference) ────────
+    # Case 1: AI and evidence strongly disagree
+    ai_says_fake  = ai > 0.65
+    ai_says_real  = ai < 0.35
+    ev_says_real  = ev > 0.65
+    ev_says_fake  = ev < 0.35
+
+    signals_conflict = (ai_says_fake and ev_says_real) or (ai_says_real and ev_says_fake)
+
+    # Case 2: All signals near 0.5 — genuinely uncertain
+    all_near_center = abs(ml - 0.5) < 0.15 and abs(ai - 0.5) < 0.15 and abs(ev - 0.5) < 0.15
+
+    if signals_conflict or all_near_center:
+        return "uncertain", 0.5
 
     model = _load_meta_model()
 
     if model is not None:
         try:
             X = np.array([[ml, ai, ev]])
-            # predict_proba returns [P(real), P(fake)]
-            proba = model.predict_proba(X)[0]
-            fake_prob = float(proba[1])
-            verdict   = "fake" if fake_prob >= 0.5 else "real"
-            # Confidence: how far from 0.5, scaled to [0.5, 0.97]
+            proba      = model.predict_proba(X)[0]
+            fake_prob  = float(proba[1])
+            verdict    = "fake" if fake_prob >= 0.5 else "real"
             confidence = round(min(0.97, max(0.50, abs(fake_prob - 0.5) * 2 + 0.50)), 2)
+            # If model itself is near-uncertain, surface that
+            if confidence < 0.58:
+                return "uncertain", confidence
             return verdict, confidence
         except Exception as e:
             logger.warning("Meta model inference failed, using heuristic: %s", e)

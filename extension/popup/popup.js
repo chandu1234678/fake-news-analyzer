@@ -325,6 +325,7 @@ function addFactCard(data, scroll = true) {
 
   const vClass    = verdict === "real" ? "v-real" : verdict === "fake" ? "v-fake" : "v-uncertain";
   const vIcon     = verdict === "real" ? "check_circle" : verdict === "fake" ? "cancel" : "help";
+  const vLabel    = verdict === "real" ? "REAL" : verdict === "fake" ? "FAKE" : "UNCERTAIN";
   const confColor = verdict === "real" ? "var(--real)" : verdict === "fake" ? "var(--fake)" : "var(--warn)";
   const mlFill    = mlPct > 50 ? "fill-fake" : "fill-real";
   const newsFill  = newsPct > 50 ? "fill-real" : "fill-fake";
@@ -412,7 +413,7 @@ function addFactCard(data, scroll = true) {
     <div class="fact-verdict-hero">
       <div class="verdict-main">
         <span class="material-symbols-outlined verdict-icon-lg ${vClass}">${vIcon}</span>
-        <span class="verdict-word ${vClass}">${verdict}</span>
+        <span class="verdict-word ${vClass}">${vLabel}</span>
       </div>
       <div class="verdict-conf-row">
         <span class="verdict-conf-pct">${confPct}%</span>
@@ -425,6 +426,7 @@ function addFactCard(data, scroll = true) {
         <span class="material-symbols-outlined ms-12">database</span>
         Analyzed from ${srcCount} source${srcCount !== 1 ? "s" : ""} · Bias checked · ML + AI + News
       </div>
+      ${verdict === "uncertain" ? `<div class="uncertain-note">Signals conflict or evidence is insufficient for a definitive verdict.</div>` : ""}
     </div>
     <div class="fact-body">
       <div class="score-row">
