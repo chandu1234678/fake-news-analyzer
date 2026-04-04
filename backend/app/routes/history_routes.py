@@ -100,11 +100,21 @@ def _session_dict(s: ChatSession) -> dict:
 
 
 def _msg_dict(m: ChatMessage) -> dict:
+    evidence = []
+    try:
+        evidence = json.loads(m.evidence) if m.evidence else []
+    except Exception:
+        pass
     return {
-        "id": m.id, "role": m.role, "content": m.content,
-        "is_claim": m.is_claim, "verdict": m.verdict,
-        "confidence": m.confidence, "ml_score": m.ml_score, "ai_score": m.ai_score,
+        "id":          m.id,
+        "role":        m.role,
+        "content":     m.content,
+        "is_claim":    m.is_claim,
+        "verdict":     m.verdict,
+        "confidence":  m.confidence,
+        "ml_score":    m.ml_score,
+        "ai_score":    m.ai_score,
         "explanation": m.explanation,
-        "evidence": json.loads(m.evidence) if m.evidence else [],
-        "created_at": m.created_at.isoformat(),
+        "evidence":    evidence,
+        "created_at":  m.created_at.isoformat(),
     }
