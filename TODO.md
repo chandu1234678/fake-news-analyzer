@@ -20,7 +20,7 @@
 - [x] 13. Meta-decision model — train a small model on ML + AI + evidence scores instead of fixed weights
 - [ ] 14. Confidence calibration — add temperature scaling, plot reliability curve
 - [x] 15. Uncertainty output — return "Insufficient evidence" when confidence is low and sources conflict
-- [ ] 16. Ablation study — measure F1 with/without each pipeline component
+- [x] 16. Ablation study — measure F1 with/without each pipeline component
 
 ## Architecture / Robustness
 
@@ -34,7 +34,7 @@
 - [x] 21. render.yaml — remove hardcoded SQLite DATABASE_URL, add Brevo env vars
 - [x] 22. Email — switch to Brevo HTTP API (SMTP blocked on Render)
 - [ ] 23. UptimeRobot — set up 5-min ping to keep Render free tier awake
-- [ ] 24. Commit and push all current changes
+- [x] 24. Commit and push all current changes
 
 ## Research / Differentiation
 
