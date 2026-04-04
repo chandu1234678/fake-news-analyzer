@@ -310,14 +310,15 @@ function addChatReply(text, scroll = true) {
   row.appendChild(bubble);
   chatContainer.appendChild(row);
 
-  // Typewriter effect
+  // Word-by-word typewriter — faster and more natural than char-by-char
+  const words = text.split(" ");
   let i = 0;
   const tw = setInterval(() => {
-    bubble.textContent += text[i];
+    bubble.textContent += (i === 0 ? "" : " ") + words[i];
     i++;
-    if (i >= text.length) clearInterval(tw);
+    if (i >= words.length) clearInterval(tw);
     if (scroll) scrollBottom();
-  }, 14);
+  }, 35);
 }
 
 function addFactCard(data, scroll = true) {
