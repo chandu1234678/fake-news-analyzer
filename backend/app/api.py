@@ -15,6 +15,7 @@ from app.analysis.evidence import fetch_evidence
 from app.analysis.chat import is_claim, run_chat
 from app.analysis.manipulation import analyze_manipulation
 from app.analysis.claim_extractor import extract_claims
+from app.analysis.drift import record as record_drift
 from app.logic.decision import decide
 from app.auth import get_current_user_optional
 from app.models import User, ChatSession
@@ -158,6 +159,9 @@ def message(
         [a["url"] for a in evidence_articles if a.get("url")]
         or evidence_urls
     )
+
+    # Record for drift detection
+    record_drift(verdict, confidence)
 
     # Stance summary for frontend contradiction meter
     stance_summary = {"support": 0, "contradict": 0, "neutral": 0}
