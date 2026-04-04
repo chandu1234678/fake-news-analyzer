@@ -392,9 +392,6 @@ function addFactCard(data, scroll = true) {
       </div>`;
   }
 
-  const explHtml = data.explanation
-    ? `<div class="fact-expl">${esc(data.explanation)}</div>` : "";
-
   // Contradiction meter
   const ss = data.stance_summary;
   let stanceHtml = "";
@@ -478,6 +475,7 @@ function addFactCard(data, scroll = true) {
         <span class="score-num">${newsPct}%</span>
       </div>
       ${manipHtml}
+      ${subClaimsHtml}
       ${explHtml}
       ${stanceHtml}
       ${srcSection}
