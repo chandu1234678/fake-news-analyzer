@@ -23,3 +23,5 @@ class MessageResponse(BaseModel):
     # Manipulation detection
     manipulation_score: Optional[float] = None
     manipulation_signals: Optional[List[str]] = None
+    sub_claims: Optional[List[str]] = None
+    primary_claim: Optional[str] = None

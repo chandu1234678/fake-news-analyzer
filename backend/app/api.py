@@ -14,6 +14,7 @@ from app.analysis.ai import run_ai_analysis
 from app.analysis.evidence import fetch_evidence
 from app.analysis.chat import is_claim, run_chat
 from app.analysis.manipulation import analyze_manipulation
+from app.analysis.claim_extractor import extract_claims
 from app.logic.decision import decide
 from app.auth import get_current_user_optional
 from app.models import User, ChatSession
@@ -129,8 +130,13 @@ def message(
             save_message(db, session_id, "assistant", reply)
         return {"is_claim": False, "session_id": session_id, "reply": reply}
 
+    # ── Claim extraction for long inputs ──────────────────────
+    # For short inputs this returns [text] immediately (no LLM call)
+    sub_claims = extract_claims(text)
+    primary_claim = sub_claims[0]  # verify the primary claim
+
     # ── Run all three in parallel ──────────────────────────────
-    pipeline = _run_pipeline_parallel(text)
+    pipeline = _run_pipeline_parallel(primary_claim)
 
     ml_result = pipeline["ml"] or {"fake": 0.5}
     raw_ai_score, explanation = pipeline["ai"] if pipeline["ai"] else (None, "")
@@ -140,7 +146,6 @@ def message(
 
     # Manipulation analysis (fast, no API call)
     manip_score, manip_signals = analyze_manipulation(text)
-
     # ── Decision ───────────────────────────────────────────────
     verdict, confidence = decide(
         ml_fake=ml_result["fake"],
@@ -174,6 +179,8 @@ def message(
         "stance_summary": stance_summary,
         "manipulation_score": manip_score,
         "manipulation_signals": manip_signals,
+        "sub_claims": sub_claims if len(sub_claims) > 1 else None,
+        "primary_claim": primary_claim if len(sub_claims) > 1 else None,
     }
 
     if session_id:

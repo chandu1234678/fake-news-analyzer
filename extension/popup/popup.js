@@ -359,6 +359,26 @@ function addFactCard(data, scroll = true) {
     }).join("");
   }
 
+  // Sub-claims extracted from long input
+  let subClaimsHtml = "";
+  if (data.sub_claims?.length > 1) {
+    const items = data.sub_claims.map((c, i) =>
+      `<div class="subclaim-item"><span class="subclaim-num">${i + 1}</span>${esc(c)}</div>`
+    ).join("");
+    subClaimsHtml = `
+      <div class="subclaims-section">
+        <div class="src-label">
+          <span class="material-symbols-outlined ms-12">format_list_bulleted</span>
+          Extracted claims
+        </div>
+        ${items}
+        <div class="subclaim-note">Verdict based on: "${esc(data.primary_claim)}"</div>
+      </div>`;
+  }
+
+  const explHtml = data.explanation
+    ? `<div class="fact-expl">${esc(data.explanation)}</div>` : "";
+
   // Manipulation badge
   let manipHtml = "";
   if (data.manipulation_score > 0.15 && data.manipulation_signals?.length) {
