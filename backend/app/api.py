@@ -4,24 +4,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
-import time
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
-
-# Simple in-memory rate limiter: max 30 requests per minute per user/IP
-_rate_store: dict = defaultdict(list)
-_RATE_LIMIT  = 30
-_RATE_WINDOW = 60  # seconds
-
-
-def _check_rate_limit(key: str):
-    now = time.time()
-    window_start = now - _RATE_WINDOW
-    _rate_store[key] = [t for t in _rate_store[key] if t > window_start]
-    if len(_rate_store[key]) >= _RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Too many requests. Please slow down.")
-    _rate_store[key].append(now)
 
 from database import get_db
 from app.schemas import MessageRequest, MessageResponse
@@ -118,10 +102,6 @@ def message(
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user_optional),
 ):
-    # Rate limit by user ID or anonymous key
-    rate_key = str(user.id) if user else "anon"
-    _check_rate_limit(rate_key)
-
     text = req.message.strip()
     if not text:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
