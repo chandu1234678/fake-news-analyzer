@@ -37,19 +37,24 @@ def _load_meta_model():
     return _meta_model
 
 
-def _heuristic(ml_fake, ai_fake, evidence_score):
+def _heuristic(ml_fake, ai_fake, evidence_score, text_len=0):
     """Original weighted heuristic — used as fallback."""
+    # For short claims (<50 chars), reduce ML weight — model trained on full articles
+    ml_weight = 0.10 if text_len < 50 else 0.18
+    ai_weight  = 0.58 if text_len < 50 else 0.50
+    ev_weight  = 0.32
+
     fake_score   = 0.0
     total_weight = 0.0
     if ai_fake is not None:
-        fake_score   += ai_fake * 0.50
-        total_weight += 0.50
+        fake_score   += ai_fake * ai_weight
+        total_weight += ai_weight
     if evidence_score is not None:
-        fake_score   += (1 - evidence_score) * 0.32
-        total_weight += 0.32
+        fake_score   += (1 - evidence_score) * ev_weight
+        total_weight += ev_weight
     if ml_fake is not None:
-        fake_score   += ml_fake * 0.18
-        total_weight += 0.18
+        fake_score   += ml_fake * ml_weight
+        total_weight += ml_weight
     if total_weight == 0:
         return "uncertain", 0.5
     normalized = fake_score / total_weight
@@ -62,6 +67,7 @@ def decide(
     ml_fake: Optional[float],
     ai_fake: Optional[float],
     evidence_score: Optional[float],
+    text_len: int = 0,
 ):
     """
     Combine ML + AI + evidence scores into a final verdict.
@@ -112,4 +118,4 @@ def decide(
         except Exception as e:
             logger.warning("Meta model inference failed, using heuristic: %s", e)
 
-    return _heuristic(ml_fake, ai_fake, evidence_score)
+    return _heuristic(ml_fake, ai_fake, evidence_score, text_len)

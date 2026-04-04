@@ -167,6 +167,7 @@ def message(
         ml_fake=ml_result["fake"],
         ai_fake=ai_score,
         evidence_score=evidence_score,
+        text_len=len(primary_claim),
     )
 
     # Highlighted suspicious phrases (after verdict is known)
