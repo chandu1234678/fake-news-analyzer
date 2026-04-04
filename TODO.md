@@ -1,61 +1,69 @@
-# FactChecker AI — Improvement To-Do List
+# FactChecker AI — To-Do List
 
 ## UI / UX (Extension)
 
-- [x] 1. Make verdict dominate the fact card (28px bold, hero layout)
-- [x] 2. Login page — add logo, tighten header, update tagline
+- [x] 1. Verdict hero layout — 28px bold, dominant verdict display
+- [x] 2. Login page — logo, tightened header, tagline
 - [x] 3. Content script — floating "TruthScan this" tooltip on text selection
-- [x] 4. Fact card — "Analyzed from X sources · Bias checked · ML + AI + News" meta line
-- [x] 5. Loading state — replace typing dots with "Analyzing claim... Checking sources... Computing verdict..."
-- [x] 6. Empty state — add "or analyze this page" button that extracts page text
-- [x] 7. Source credibility tags — HIGH / MED badge next to each source based on domain
-- [x] 29. User feedback button — "Was this verdict wrong?" stores correction for future retraining
-- [x] 30. Manipulation detection badge — flag emotionally charged / sensational language in the claim
-- [x] 32. Claim extraction — for long inputs, split into atomic sub-claims and verify each separately
-- [ ] 35. Highlighted suspicious phrases — underline/mark key phrases in the claim that triggered fake signals
-- [ ] 36. Contradiction detail — expand stance meter to show which sources support vs contradict
+- [x] 4. Fact card meta line — "Analyzed from X sources · Bias checked · ML + AI + News"
+- [x] 5. Loading state — "Analyzing claim... Checking sources... Computing verdict..."
+- [x] 6. Empty state — "Analyze this page" button extracts page text
+- [x] 7. Source credibility tags — HIGH / MED / LOW badge per source
+- [x] 29. User feedback button — "Was this verdict wrong?" stores correction
+- [x] 30. Manipulation detection badge — flags emotionally charged / sensational language
+- [x] 32. Claim extraction UI — sub-claims shown in fact card and detail page
+- [x] 35. Highlighted suspicious phrases — color-coded tags in fact card and detail page
+- [x] 36. Contradiction detail — stance meter shows support / neutral / conflict counts
+- [x] 37. Verdict change notice — warns when same claim gets different verdict over time
+- [ ] 38. Dashboard — add drift stats, model version, and credibility summary card
+- [ ] 39. Saved page — show highlights and manipulation badge on saved cards
+- [ ] 40. Detail page — add "Report wrong verdict" feedback button
 
 ## Backend / ML
 
-- [x] 8. PostgreSQL migration — persistent DB on Render
-- [x] 9. Production connection pooling in database.py
-- [x] 10. Retrain ML model on 98k samples (90% accuracy, bigrams, 50k features)
-- [x] 11. Replace heuristic AI scoring — make LLM return structured JSON verdict
-- [x] 12. Evidence stance scoring — classify each source as support / contradict / neutral
-- [x] 13. Meta-decision model — train a small model on ML + AI + evidence scores instead of fixed weights
-- [x] 14. Confidence calibration — isotonic regression via CalibratedClassifierCV
-- [x] 15. Uncertainty output — return "Insufficient evidence" when confidence is low and sources conflict
-- [x] 16. Ablation study — measure F1 with/without each pipeline component
-- [x] 31. Manipulation / bias detection — score emotional language, clickbait patterns in claim text
-- [x] 32. Claim extraction — for long inputs, split into atomic sub-claims and verify each separately
-- [ ] 33. User feedback DB model — store predicted vs actual corrections for retraining ← model exists, need training script
-- [ ] 34. Model versioning — keep v1/v2/v3 joblib files, log which version served each prediction
-- [ ] 37. Data quality filter — deduplicate, min length, source blacklist before training (partially done in train.py)
-- [ ] 38. Drift detection — track prediction distribution, alert when shift detected
-- [ ] 39. Calibration curve — plot reliability diagram, add isotonic regression to ML model
-- [ ] 40. Adversarial test set — paraphrased claims, partial truths, misleading headlines
-- [ ] 41. Source credibility dynamic scoring — learn trust scores from feedback, not just static map
-- [ ] 42. Temporal claim tracking — store how a claim's verdict changes over time across requests
+- [x] 8. PostgreSQL migration — persistent DB on Render, psycopg2, pool_pre_ping
+- [x] 9. Production connection pooling — database.py handles sqlite + postgres
+- [x] 10. ML model retrained — 98k+ samples, bigrams, 50k features, ~90% accuracy
+- [x] 11. Structured AI scoring — LLM returns JSON verdict + confidence + explanation
+- [x] 12. Evidence stance scoring — support / contradict / neutral per article
+- [x] 13. Meta-decision model — CalibratedClassifierCV trained on ML+AI+evidence scores
+- [x] 14. Confidence calibration — isotonic regression, Brier score tracked
+- [x] 15. Uncertainty output — "uncertain" when signals conflict or all near 0.5
+- [x] 16. Ablation study — F1 measured with/without each pipeline component
+- [x] 31. Manipulation detection — emotional language, clickbait, absolute claims scored
+- [x] 32. Claim extraction — LLM splits long inputs into atomic verifiable claims
+- [x] 33. User feedback model — UserFeedback table stores predicted vs actual corrections
+- [x] 34. Model versioning — model_version.json saved on each train, exposed on /health
+- [x] 35. Suspicious phrase highlighting — TF-IDF feature weights + pattern matching
+- [x] 36. Temporal claim tracking — ClaimRecord table, verdict change detection
+- [x] 41. Dynamic source credibility — trust scores per domain, weighted evidence scoring
+- [x] 42. Drift detection — rolling window tracks fake rate, alerts on >20% shift
+- [x] 43. Calibrated training script — train_calibrated.py with reliability curve output
+- [x] 44. Adversarial test generator — gen_adversarial.py uses LLM to create paraphrases
+- [x] 45. Feedback retraining pipeline — retrain_from_feedback.py with evaluation gate
+- [ ] 46. Data quality filter — source blacklist, min length enforced in training (partial)
+- [ ] 47. Adversarial evaluation — run gen_adversarial output through pipeline, report F1
+- [ ] 48. Calibration curve endpoint — expose reliability diagram data via API
+- [ ] 49. /credibility endpoint — expose dynamic trust scores (done, needs frontend)
 
 ## Deploy / Infra
 
-- [x] 21. render.yaml — remove hardcoded SQLite DATABASE_URL, add Brevo env vars
-- [x] 22. Email — switch to Brevo HTTP API (SMTP blocked on Render)
-- [ ] 23. UptimeRobot / cron-job.org — set up 5-min ping to keep Render free tier awake
-- [x] 24. Commit and push all current changes
+- [x] 21. render.yaml — updated with correct env vars
+- [x] 22. Email — Brevo HTTP API, works on Render, any recipient
+- [x] 24. All changes committed and pushed
+- [ ] 23. UptimeRobot / cron-job.org — external ping every 5 min to keep Render alive
 
 ## Research / Differentiation
 
-- [x] 25. Evidence consistency score — support vs contradict ratio across sources
-- [ ] 26. Source credibility graph — dynamic domain trust scoring (static map done, learning pending)
-- [ ] 27. Temporal tracking — store how a claim's verdict changes over time
-- [x] 28. Contradiction meter in UI — visual indicator when sources disagree
+- [x] 25. Evidence consistency score — trust-weighted support vs contradict ratio
+- [x] 26. Source credibility — dynamic scoring with 50+ domains, learned adjustments
+- [x] 27. Temporal tracking — ClaimRecord stores every verification, detects verdict drift
+- [x] 28. Contradiction meter — visual stance bar in fact card and detail page
 
-## Next Priority (implement in order)
+## Next Priority
 
-- [ ] A. Calibration curve + isotonic regression on ML model (proves rigor)
-- [ ] B. Adversarial test set generation (LLM paraphrases, partial truths)
-- [ ] C. Feedback → retraining pipeline (use UserFeedback table as labeled data)
-- [ ] D. Model versioning (save with timestamp, log version in health endpoint)
-- [ ] E. Drift detection (track daily prediction distribution, alert on shift)
-- [ ] F. Highlighted suspicious phrases in UI
+- [ ] A. Dashboard upgrade — show model version, drift alert, credibility stats
+- [ ] B. Adversarial evaluation — run test set, report robustness F1
+- [ ] C. Calibration curve API endpoint
+- [ ] D. UptimeRobot setup (manual — no code needed)
+- [ ] E. Saved page — show manipulation/highlight badges on saved cards
