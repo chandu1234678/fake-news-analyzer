@@ -66,16 +66,19 @@ def system_stats(
 @router.get("/calibration")
 def calibration_data():
     """
-    Returns calibration curve data points for reliability diagram.
-    Uses stored model metrics if available.
+    Returns calibration curve data points + adversarial evaluation results.
+    All sourced from model_version.json written by training scripts.
     """
     mv = _model_version()
-    # Return stored metrics — actual curve requires running on test set
     return {
-        "version":     mv.get("version", "unknown"),
-        "accuracy":    mv.get("accuracy"),
-        "f1_macro":    mv.get("f1_macro"),
-        "brier_score": mv.get("brier_score"),
-        "calibration": mv.get("calibration", "none"),
-        "note": "Run train_calibrated.py to update these metrics."
+        "version":              mv.get("version", "unknown"),
+        "accuracy":             mv.get("accuracy"),
+        "f1_macro":             mv.get("f1_macro"),
+        "brier_score":          mv.get("brier_score"),
+        "calibration":          mv.get("calibration", "none"),
+        "adversarial_f1":       mv.get("adversarial_f1"),
+        "adversarial_accuracy": mv.get("adversarial_accuracy"),
+        "robustness_score":     mv.get("robustness_score"),
+        "adversarial_samples":  mv.get("adversarial_samples"),
+        "note": "Run train_calibrated.py and eval_adversarial.py to update."
     }

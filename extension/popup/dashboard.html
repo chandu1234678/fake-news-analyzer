@@ -49,7 +49,7 @@
         </span>
         <span id="model-version" style="font-size:10px;color:var(--t3)">—</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px">
         <div style="text-align:center">
           <div id="model-acc" style="font-size:15px;font-weight:700;color:var(--accent)">—</div>
           <div style="font-size:9px;color:var(--t3)">Accuracy</div>
@@ -61,6 +61,10 @@
         <div style="text-align:center">
           <div id="model-brier" style="font-size:15px;font-weight:700;color:var(--warn)">—</div>
           <div style="font-size:9px;color:var(--t3)">Brier ↓</div>
+        </div>
+        <div style="text-align:center">
+          <div id="model-robustness" style="font-size:15px;font-weight:700;color:var(--t3)">—</div>
+          <div style="font-size:9px;color:var(--t3)">Robust F1</div>
         </div>
       </div>
     </div>

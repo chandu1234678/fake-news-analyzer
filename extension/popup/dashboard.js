@@ -109,6 +109,16 @@ async function loadSystemStats() {
     document.getElementById("model-f1").textContent    = mv.f1_macro   ? mv.f1_macro.toFixed(3) : "—";
     document.getElementById("model-brier").textContent = mv.brier_score ? mv.brier_score.toFixed(3) : "—";
 
+    // Adversarial robustness (if available)
+    if (mv.robustness_score != null) {
+      const robEl = document.getElementById("model-robustness");
+      if (robEl) {
+        robEl.textContent = mv.robustness_score.toFixed(3);
+        robEl.style.color = mv.robustness_score >= 0.80 ? "var(--real)"
+                          : mv.robustness_score >= 0.60 ? "var(--warn)" : "var(--fake)";
+      }
+    }
+
     // Drift
     const drift = data.drift || {};
     const driftBody = document.getElementById("drift-body");

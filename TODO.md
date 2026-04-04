@@ -42,9 +42,9 @@
 - [x] 44. Adversarial test generator — gen_adversarial.py uses LLM to create paraphrases
 - [x] 45. Feedback retraining pipeline — retrain_from_feedback.py with evaluation gate
 - [ ] 46. Data quality filter — source blacklist, min length enforced in training (partial)
-- [ ] 47. Adversarial evaluation — run gen_adversarial output through pipeline, report F1
-- [ ] 48. Calibration curve endpoint — expose reliability diagram data via API
-- [ ] 49. /credibility endpoint — expose dynamic trust scores (done, needs frontend)
+- [x] 47. Adversarial evaluation — eval_adversarial.py runs test set, reports F1 + robustness score
+- [x] 48. Calibration curve endpoint — /stats/calibration exposes all model metrics + adversarial results
+- [x] 49. /credibility endpoint — exposes dynamic trust scores
 
 ## Deploy / Infra
 
@@ -62,8 +62,8 @@
 
 ## Next Priority
 
-- [ ] A. Dashboard upgrade — show model version, drift alert, credibility stats
-- [ ] B. Adversarial evaluation — run test set, report robustness F1
-- [ ] C. Calibration curve API endpoint
+- [x] A. Dashboard upgrade — model version, drift alert, credibility stats, robustness score
+- [x] B. Adversarial evaluation — eval_adversarial.py with per-type F1 breakdown
+- [x] C. Calibration curve API endpoint — /stats/calibration
 - [ ] D. UptimeRobot setup (manual — no code needed)
-- [ ] E. Saved page — show manipulation/highlight badges on saved cards
+- [x] E. Saved page — manipulation/highlight badges on saved cards
