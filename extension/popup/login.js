@@ -195,6 +195,14 @@ chrome.storage.local.get(["token"], d => {
   if (d.token) window.location.href = chrome.runtime.getURL("popup/popup.html");
 });
 
+// Pre-warm Google token silently so clicking the button is instant
+if (chrome.identity && chrome.identity.getAuthToken) {
+  chrome.identity.getAuthToken({ interactive: false }, () => {
+    // silent — just warms the cache, ignore result and errors
+    void chrome.runtime.lastError;
+  });
+}
+
 // Enter key
 document.addEventListener("keydown", e => {
   if (e.key !== "Enter") return;
