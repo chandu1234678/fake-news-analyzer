@@ -37,5 +37,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TEXT_SELECTED") {
     chrome.storage.local.set({ selectedText: message.payload });
   }
+
+  if (message.type === "OPEN_POPUP_WITH_TEXT") {
+    const text = message.text;
+    chrome.storage.local.set({ selectedText: text, pendingAnalysis: true }, () => {
+      chrome.windows.getCurrent(win => {
+        const width  = 440;
+        const height = 640;
+        const left   = (win.left + win.width) - width - 20;
+        const top    = win.top + 60;
+        chrome.windows.create({
+          url: chrome.runtime.getURL("popup/popup.html"),
+          type: "popup",
+          width, height, left, top,
+          focused: true
+        });
+      });
+    });
+  }
+
   return true;
 });

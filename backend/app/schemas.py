@@ -3,8 +3,8 @@ from typing import List, Optional
 
 class MessageRequest(BaseModel):
     message: str
-    session_id: Optional[int] = None      # if None and user logged in, auto-create
-    history: Optional[List[dict]] = []    # used when not logged in
+    session_id: Optional[int] = None
+    history: Optional[List[dict]] = []
 
 class MessageResponse(BaseModel):
     is_claim: bool
@@ -18,3 +18,5 @@ class MessageResponse(BaseModel):
     evidence: Optional[List[str]] = None
     evidence_score: Optional[float] = None
     evidence_articles: Optional[List[dict]] = None
+    # Stance breakdown: {"support": int, "contradict": int, "neutral": int}
+    stance_summary: Optional[dict] = None

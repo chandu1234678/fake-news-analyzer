@@ -187,16 +187,19 @@ function showWelcome() {
   const wrap = document.createElement("div");
   wrap.className = "welcome-screen";
   wrap.innerHTML = `
+    <img src="../icons/logo.png" alt="" class="welcome-logo-img" style="width:56px;height:56px;object-fit:contain;margin-bottom:4px;">
     <div class="welcome-brand"><span class="brand-main">FactChecker</span><span class="brand-ai"> AI</span></div>
     <div class="welcome-sub">Ask me anything or paste a news claim.<br>I'll chat or fact-check automatically.</div>
     <div class="welcome-chips">
       <button class="welcome-chip" id="wc1">📰 Paste a headline to fact-check</button>
       <button class="welcome-chip" id="wc2">💬 Ask me anything</button>
+      <button class="welcome-chip welcome-chip-page" id="wc3">🌐 Analyze this page</button>
     </div>`;
   chatContainer.innerHTML = "";
   chatContainer.appendChild(wrap);
   document.getElementById("wc1").addEventListener("click", () => setInput("Is this news real? [paste headline]"));
   document.getElementById("wc2").addEventListener("click", () => setInput("What is misinformation?"));
+  document.getElementById("wc3").addEventListener("click", analyzeCurrentPage);
 }
 
 function setInput(text) {
@@ -205,8 +208,57 @@ function setInput(text) {
   autoResize();
 }
 
+async function analyzeCurrentPage() {
+  // Get the active tab and extract its text via content script
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) {
+      addChatReply("Couldn't access the current tab. Try pasting the text manually.");
+      return;
+    }
+    // Inject a one-shot script to grab visible text
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        // Grab main article text, fallback to body
+        const article = document.querySelector("article, main, [role='main']");
+        const el = article || document.body;
+        return el.innerText.replace(/\s+/g, " ").trim().slice(0, 1200);
+      }
+    });
+    const pageText = results?.[0]?.result;
+    if (!pageText || pageText.length < 30) {
+      addChatReply("Couldn't extract enough text from this page. Try pasting the claim manually.");
+      return;
+    }
+    inputText.value = pageText;
+    autoResize();
+    send();
+  } catch (err) {
+    addChatReply("Page analysis isn't available here. Try on a news article page.");
+  }
+}
+
 const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const scrollBottom = () => { chatContainer.scrollTop = chatContainer.scrollHeight; };
+
+// ── Source credibility ────────────────────────────────────────
+const HIGH_CRED_DOMAINS = new Set([
+  "reuters.com","apnews.com","bbc.com","bbc.co.uk","npr.org",
+  "theguardian.com","nytimes.com","washingtonpost.com","wsj.com",
+  "bloomberg.com","ft.com","economist.com","nature.com","science.org",
+  "who.int","cdc.gov","nih.gov","gov.uk","europa.eu","un.org",
+  "snopes.com","factcheck.org","politifact.com","fullfact.org",
+  "aljazeera.com","dw.com","france24.com","abc.net.au","cbc.ca"
+]);
+
+function getCredTag(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    if (HIGH_CRED_DOMAINS.has(host)) return { label: "HIGH", cls: "cred-high" };
+    return { label: "MED", cls: "cred-med" };
+  } catch { return { label: "MED", cls: "cred-med" }; }
+}
 
 function addUserMsg(text, scroll = true) {
   const el = document.createElement("div");
@@ -220,10 +272,28 @@ function addTyping() {
   const row = document.createElement("div");
   row.className = "bot-row";
   row.innerHTML = `
-    <div class="bot-avatar"><span class="material-symbols-outlined">smart_toy</span></div>
-    <div class="bot-bubble"><div class="typing-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>`;
+    <div class="bot-avatar"><span class="material-symbols-outlined">fact_check</span></div>
+    <div class="bot-bubble typing-status">
+      <span class="typing-step active" id="ts1">Analyzing claim...</span>
+      <span class="typing-step" id="ts2">Checking sources...</span>
+      <span class="typing-step" id="ts3">Computing verdict...</span>
+    </div>`;
   chatContainer.appendChild(row);
   scrollBottom();
+
+  // Cycle through steps to feel alive
+  let step = 0;
+  const steps = row.querySelectorAll(".typing-step");
+  const timer = setInterval(() => {
+    steps.forEach(s => s.classList.remove("active"));
+    step = (step + 1) % steps.length;
+    steps[step].classList.add("active");
+  }, 1400);
+  row._clearTimer = () => clearInterval(timer);
+
+  const origRemove = row.remove.bind(row);
+  row.remove = () => { row._clearTimer(); origRemove(); };
+
   return row;
 }
 
@@ -247,36 +317,78 @@ function addFactCard(data, scroll = true) {
   const confPct  = Math.round((data.confidence || 0) * 100);
   const mlPct    = Math.round((data.ml_score   || 0) * 100);
   const aiPct    = Math.round((data.ai_score   || 0) * 100);
-  // News score: evidence_score is a REAL signal (1=real), display as corroboration %
   const newsPct  = data.evidence_score != null
     ? Math.round(data.evidence_score * 100)
     : (data.evidence_articles?.length || data.evidence?.length) ? 60 : 0;
 
-  const vClass  = verdict === "real" ? "v-real" : verdict === "fake" ? "v-fake" : "v-uncertain";
-  const vIcon   = verdict === "real" ? "check_circle" : verdict === "fake" ? "cancel" : "help";
-  const mlFill  = mlPct > 50 ? "fill-fake" : "fill-real";
-  const newsFill = newsPct > 50 ? "fill-real" : "fill-fake";
+  const srcCount = data.evidence_articles?.length || data.evidence?.length || 0;
 
-  // Evidence section — shown after explanation
+  const vClass    = verdict === "real" ? "v-real" : verdict === "fake" ? "v-fake" : "v-uncertain";
+  const vIcon     = verdict === "real" ? "check_circle" : verdict === "fake" ? "cancel" : "help";
+  const confColor = verdict === "real" ? "var(--real)" : verdict === "fake" ? "var(--fake)" : "var(--warn)";
+  const mlFill    = mlPct > 50 ? "fill-fake" : "fill-real";
+  const newsFill  = newsPct > 50 ? "fill-real" : "fill-fake";
+
   const hasArticles = data.evidence_articles && data.evidence_articles.length;
   const hasUrls     = data.evidence && data.evidence.length;
 
   let srcHtml = "";
   if (hasArticles) {
-    srcHtml = data.evidence_articles.slice(0, 4).map(a =>
-      `<a href="${esc(a.url)}" target="_blank">
-        <span class="src-name">${esc(a.source)}</span>
+    srcHtml = data.evidence_articles.slice(0, 4).map(a => {
+      const cred = getCredTag(a.url || "");
+      return `<a href="${esc(a.url)}" target="_blank">
+        <div class="src-name-row">
+          <span class="src-name">${esc(a.source)}</span>
+          <span class="src-cred ${cred.cls}">${cred.label}</span>
+        </div>
         <span class="src-title">${esc(a.title)}</span>
-      </a>`
-    ).join("");
+      </a>`;
+    }).join("");
   } else if (hasUrls) {
-    srcHtml = data.evidence.slice(0, 4).map(s =>
-      `<a href="${esc(s)}" target="_blank">↗ ${esc(s)}</a>`
-    ).join("");
+    srcHtml = data.evidence.slice(0, 4).map(s => {
+      const cred = getCredTag(s);
+      let domain = s;
+      try { domain = new URL(s).hostname.replace(/^www\./, ""); } catch {}
+      return `<a href="${esc(s)}" target="_blank">
+        <div class="src-name-row">
+          <span class="src-name">${esc(domain)}</span>
+          <span class="src-cred ${cred.cls}">${cred.label}</span>
+        </div>
+      </a>`;
+    }).join("");
   }
 
   const explHtml = data.explanation
     ? `<div class="fact-expl">${esc(data.explanation)}</div>` : "";
+
+  // Contradiction meter
+  const ss = data.stance_summary;
+  let stanceHtml = "";
+  if (ss && (ss.support + ss.contradict + ss.neutral) > 0) {
+    const total = ss.support + ss.contradict + ss.neutral;
+    const supPct  = Math.round((ss.support    / total) * 100);
+    const conPct  = Math.round((ss.contradict / total) * 100);
+    const neuPct  = 100 - supPct - conPct;
+    const meterLabel = ss.contradict > ss.support
+      ? "⚠️ Sources conflict"
+      : ss.support > 0
+        ? "✓ Sources agree"
+        : "Sources neutral";
+    stanceHtml = `
+      <div class="stance-meter">
+        <div class="stance-label">${meterLabel}</div>
+        <div class="stance-bar">
+          <div class="stance-seg stance-sup" style="width:${supPct}%" title="Support: ${ss.support}"></div>
+          <div class="stance-seg stance-neu" style="width:${neuPct}%" title="Neutral: ${ss.neutral}"></div>
+          <div class="stance-seg stance-con" style="width:${conPct}%" title="Contradict: ${ss.contradict}"></div>
+        </div>
+        <div class="stance-counts">
+          <span class="stance-sup-txt">${ss.support} support</span>
+          <span class="stance-neu-txt">${ss.neutral} neutral</span>
+          <span class="stance-con-txt">${ss.contradict} conflict</span>
+        </div>
+      </div>`;
+  }
 
   const srcSection = srcHtml
     ? `<div class="fact-sources">
@@ -297,12 +409,22 @@ function addFactCard(data, scroll = true) {
   const card = document.createElement("div");
   card.className = "fact-card";
   card.innerHTML = `
-    <div class="fact-header">
-      <div class="verdict-badge ${vClass}">
-        <span class="material-symbols-outlined ms-14">${vIcon}</span>
-        ${verdict}
+    <div class="fact-verdict-hero">
+      <div class="verdict-main">
+        <span class="material-symbols-outlined verdict-icon-lg ${vClass}">${vIcon}</span>
+        <span class="verdict-word ${vClass}">${verdict}</span>
       </div>
-      <span class="conf-text">Confidence: <strong>${confPct}%</strong></span>
+      <div class="verdict-conf-row">
+        <span class="verdict-conf-pct">${confPct}%</span>
+        <span class="verdict-conf-label">confidence</span>
+        <div class="verdict-conf-bar">
+          <div class="verdict-conf-fill conf-bar" style="background:${confColor}"></div>
+        </div>
+      </div>
+      <div class="verdict-meta">
+        <span class="material-symbols-outlined ms-12">database</span>
+        Analyzed from ${srcCount} source${srcCount !== 1 ? "s" : ""} · Bias checked · ML + AI + News
+      </div>
     </div>
     <div class="fact-body">
       <div class="score-row">
@@ -321,6 +443,7 @@ function addFactCard(data, scroll = true) {
         <span class="score-num">${newsPct}%</span>
       </div>
       ${explHtml}
+      ${stanceHtml}
       ${srcSection}
       <div class="fact-actions">
         <button class="fact-btn view-btn">View Detail</button>
@@ -332,14 +455,16 @@ function addFactCard(data, scroll = true) {
   row.appendChild(card);
   chatContainer.appendChild(row);
 
-  card.querySelector(".ml-bar").style.width   = `${mlPct}%`;
-  card.querySelector(".ai-bar").style.width   = `${aiPct}%`;
-  card.querySelector(".news-bar").style.width = `${newsPct}%`;
+  card.querySelector(".ml-bar").style.width    = `${mlPct}%`;
+  card.querySelector(".ai-bar").style.width    = `${aiPct}%`;
+  card.querySelector(".news-bar").style.width  = `${newsPct}%`;
+  card.querySelector(".conf-bar").style.width  = `${confPct}%`;
   card.querySelector(".view-btn").addEventListener("click", () => viewDetail(data));
   card.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
 
   if (scroll) scrollBottom();
 }
+
 
 function viewDetail(data) {
   chrome.storage.local.set({ detailData: data }, () => { window.location.href = chrome.runtime.getURL("popup/detail.html"); });

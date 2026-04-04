@@ -120,6 +120,12 @@ def message(
         or evidence_urls
     )
 
+    # Stance summary for frontend contradiction meter
+    stance_summary = {"support": 0, "contradict": 0, "neutral": 0}
+    for a in evidence_articles:
+        s = a.get("stance", "neutral")
+        stance_summary[s] = stance_summary.get(s, 0) + 1
+
     result = {
         "is_claim": True,
         "session_id": session_id,
@@ -131,6 +137,7 @@ def message(
         "explanation": explanation,
         "evidence": display_evidence,
         "evidence_articles": evidence_articles,
+        "stance_summary": stance_summary,
     }
 
     if session_id:
