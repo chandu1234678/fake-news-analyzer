@@ -18,15 +18,17 @@
 
   <div class="page-body">
 
-    <div class="card">
+    <!-- Welcome -->
+    <div class="card" style="margin-bottom:10px">
       <div style="font-size:11px;color:var(--t3);margin-bottom:2px">Welcome back,</div>
       <div id="user-name" style="font-size:14px;font-weight:600;color:var(--t1)">Loading...</div>
     </div>
 
+    <!-- Verdict stats -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
       <div class="card" style="text-align:center;margin-bottom:0">
         <div id="stat-total" class="stat-num" style="color:var(--accent)">—</div>
-        <div class="stat-lbl">Total Chats</div>
+        <div class="stat-lbl">Chats</div>
       </div>
       <div class="card" style="text-align:center;margin-bottom:0">
         <div id="stat-real" class="stat-num" style="color:var(--real)">—</div>
@@ -38,11 +40,56 @@
       </div>
     </div>
 
+    <!-- Model info -->
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span style="display:flex;align-items:center;gap:4px">
+          <span class="material-symbols-outlined ms-12">model_training</span>
+          ML Model
+        </span>
+        <span id="model-version" style="font-size:10px;color:var(--t3)">—</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+        <div style="text-align:center">
+          <div id="model-acc" style="font-size:15px;font-weight:700;color:var(--accent)">—</div>
+          <div style="font-size:9px;color:var(--t3)">Accuracy</div>
+        </div>
+        <div style="text-align:center">
+          <div id="model-f1" style="font-size:15px;font-weight:700;color:var(--real)">—</div>
+          <div style="font-size:9px;color:var(--t3)">F1 Score</div>
+        </div>
+        <div style="text-align:center">
+          <div id="model-brier" style="font-size:15px;font-weight:700;color:var(--warn)">—</div>
+          <div style="font-size:9px;color:var(--t3)">Brier ↓</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drift monitor -->
+    <div class="card" style="margin-bottom:10px" id="drift-card">
+      <div class="card-title" style="display:flex;align-items:center;gap:4px">
+        <span class="material-symbols-outlined ms-12">monitoring</span>
+        Prediction Drift
+      </div>
+      <div id="drift-body" style="font-size:12px;color:var(--t3);margin-top:6px">Loading…</div>
+    </div>
+
+    <!-- Top trusted sources -->
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-title" style="display:flex;align-items:center;gap:4px">
+        <span class="material-symbols-outlined ms-12">verified</span>
+        Top Trusted Sources
+      </div>
+      <div id="sources-list" style="margin-top:6px">Loading…</div>
+    </div>
+
+    <!-- Recent chats -->
     <div class="card-title" style="margin-bottom:6px">Recent Chats</div>
     <div id="recent-list" style="margin-bottom:14px">
       <div style="font-size:12px;color:var(--t3)">Loading...</div>
     </div>
 
+    <!-- Quick actions -->
     <div class="card-title" style="margin-bottom:6px">Quick Actions</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <a id="qa-chat"     class="quick-action"><span class="material-symbols-outlined">fact_check</span> Fact Check</a>

@@ -10,6 +10,8 @@ import app.models  # register models
 from app.api import router
 from app.routes.auth_routes import router as auth_router
 from app.routes.history_routes import router as history_router
+from app.routes.stats_routes import router as stats_router
+from app.health import router as health_router
 
 # ── Logging setup ─────────────────────────────────────────────
 logging.basicConfig(
@@ -53,10 +55,6 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(history_router)
+app.include_router(stats_router)
+app.include_router(health_router)
 app.include_router(router)
-
-
-@app.api_route("/health", methods=["GET", "HEAD"])
-def health():
-    import time
-    return {"status": "ok", "version": "2.0.0", "ts": int(time.time())}

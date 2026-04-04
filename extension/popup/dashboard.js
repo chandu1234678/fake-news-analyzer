@@ -1,9 +1,8 @@
-// API is defined in config.js (loaded before this script)
+// API is defined in config.js
 let token = null;
 
 function nav(page) { window.location.href = chrome.runtime.getURL(`popup/${page}`); }
 function navLogin() { chrome.storage.local.clear(() => nav("login.html")); }
-
 const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
 function timeAgo(iso) {
@@ -28,13 +27,12 @@ chrome.storage.local.get(["token", "user"], async d => {
       av.textContent = (d.user.name || d.user.email || "?").charAt(0).toUpperCase();
     }
   }
-  await loadStats();
+  await Promise.allSettled([loadSessions(), loadSystemStats()]);
 });
 
-async function loadStats() {
+// ── Session stats ─────────────────────────────────────────────
+async function loadSessions() {
   const list = document.getElementById("recent-list");
-  list.innerHTML = `<div style="font-size:12px;color:var(--t3);text-align:center;padding:16px 0">Loading…</div>`;
-
   try {
     const res = await fetch(`${API}/history/sessions`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -45,11 +43,10 @@ async function loadStats() {
     const sessions = await res.json();
     document.getElementById("stat-total").textContent = sessions.length || 0;
 
-    // Recent list
     const recent = sessions.slice(0, 5);
     if (!recent.length) {
       list.innerHTML = `<div style="font-size:12px;color:var(--t3)">No chats yet. <span id="start-chat" style="color:var(--accent);cursor:pointer">Start one →</span></div>`;
-      document.getElementById("start-chat").addEventListener("click", () => nav("popup.html"));
+      document.getElementById("start-chat")?.addEventListener("click", () => nav("popup.html"));
     } else {
       list.innerHTML = "";
       recent.forEach(s => {
@@ -65,7 +62,7 @@ async function loadStats() {
       });
     }
 
-    // Count real/fake — batch fetch only last 5 sessions to avoid N+1 spam
+    // Count real/fake from last 5 sessions
     let real = 0, fake = 0;
     await Promise.allSettled(sessions.slice(0, 5).map(async s => {
       const mr = await fetch(`${API}/history/sessions/${s.id}/messages`, {
@@ -89,10 +86,82 @@ async function loadStats() {
         <div style="font-size:12px;color:var(--t3);margin-bottom:8px">Could not load — backend may be starting up</div>
         <button id="refresh-link" style="padding:6px 14px;border-radius:8px;border:1px solid var(--a-bdr);background:var(--a-dim);color:var(--accent);font-size:12px;font-family:Inter,sans-serif;cursor:pointer">Retry</button>
       </div>`;
-    document.getElementById("refresh-link").addEventListener("click", loadStats);
+    document.getElementById("refresh-link")?.addEventListener("click", loadSessions);
     document.getElementById("stat-total").textContent = "—";
     document.getElementById("stat-real").textContent = "—";
     document.getElementById("stat-fake").textContent = "—";
+  }
+}
+
+// ── System stats (model + drift + credibility) ────────────────
+async function loadSystemStats() {
+  try {
+    const res = await fetch(`${API}/stats/system`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // Model info
+    const mv = data.model || {};
+    document.getElementById("model-version").textContent = mv.version || "unknown";
+    document.getElementById("model-acc").textContent   = mv.accuracy   ? `${(mv.accuracy * 100).toFixed(1)}%` : "—";
+    document.getElementById("model-f1").textContent    = mv.f1_macro   ? mv.f1_macro.toFixed(3) : "—";
+    document.getElementById("model-brier").textContent = mv.brier_score ? mv.brier_score.toFixed(3) : "—";
+
+    // Drift
+    const drift = data.drift || {};
+    const driftBody = document.getElementById("drift-body");
+    if (drift.n > 0) {
+      const alertHtml = drift.drift_alert
+        ? `<span style="color:var(--fake);font-weight:600">⚠️ Drift detected</span>`
+        : `<span style="color:var(--real)">✓ Stable</span>`;
+      driftBody.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--t3)">Status</span>
+          ${alertHtml}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--fake)">${(drift.fake_rate * 100).toFixed(0)}%</div>
+            <div style="font-size:9px;color:var(--t3)">Fake rate</div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--warn)">${(drift.uncertain_rate * 100).toFixed(0)}%</div>
+            <div style="font-size:9px;color:var(--t3)">Uncertain</div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--accent)">${drift.n}</div>
+            <div style="font-size:9px;color:var(--t3)">Predictions</div>
+          </div>
+        </div>`;
+    } else {
+      driftBody.textContent = "No predictions yet in this session.";
+    }
+
+    // Top sources
+    const srcList = document.getElementById("sources-list");
+    const sources = data.top_sources || [];
+    if (sources.length) {
+      srcList.innerHTML = sources.map(s => {
+        const pct = Math.round(s.score * 100);
+        const cls = s.score >= 0.85 ? "cred-high" : s.score >= 0.65 ? "cred-med" : "cred-low";
+        const bar = `<div style="flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--real);border-radius:2px"></div>
+        </div>`;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--t2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.domain)}</span>
+          ${bar}
+          <span class="src-cred ${cls}" style="flex-shrink:0">${pct}%</span>
+        </div>`;
+      }).join("");
+    } else {
+      srcList.textContent = "No source data yet.";
+    }
+
+  } catch(e) {
+    document.getElementById("drift-body").textContent = "Unavailable";
+    document.getElementById("sources-list").textContent = "Unavailable";
   }
 }
 

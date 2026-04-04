@@ -248,3 +248,38 @@ document.getElementById("save-btn").addEventListener("click", () => {
     btn.style.color = "var(--accent)";
   });
 });
+
+// ── Feedback button ───────────────────────────────────────────
+document.getElementById("feedback-btn").addEventListener("click", () => {
+  chrome.storage.local.get(["detailData", "token"], async d => {
+    if (!d.detailData) return;
+    const data = d.detailData;
+    const current = (data.verdict || "uncertain").toLowerCase();
+    const correct = current === "fake" ? "real" : "fake";
+    const btn = document.getElementById("feedback-btn");
+    btn.disabled = true;
+    btn.querySelector(".material-symbols-outlined").textContent = "flag";
+    btn.style.color = "var(--warn)";
+    try {
+      await fetch(`${API}/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${d.token}`
+        },
+        body: JSON.stringify({
+          claim_text: data.explanation || "",
+          predicted:  current,
+          actual:     correct,
+          confidence: data.confidence || null,
+        })
+      });
+      btn.querySelector(".material-symbols-outlined").textContent = "flag_circle";
+      btn.style.color = "var(--real)";
+      btn.title = "Feedback recorded";
+    } catch(e) {
+      btn.disabled = false;
+      btn.style.color = "";
+    }
+  });
+});

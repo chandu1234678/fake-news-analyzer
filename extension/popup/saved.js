@@ -25,6 +25,18 @@ function render(claims) {
     const vIcon  = v === "real" ? "check_circle" : v === "fake" ? "cancel" : "help";
     const el     = document.createElement("div");
     el.className = "list-item";
+    const confPct = Math.round((c.confidence || 0) * 100);
+    const hasManip = c.manipulation_score > 0.15 && c.manipulation_signals?.length;
+    const manipBadge = hasManip
+      ? `<span class="manip-badge ${c.manipulation_score >= 0.5 ? 'manip-high' : 'manip-med'}" style="margin-top:5px;font-size:9px;padding:2px 6px">
+           <span class="material-symbols-outlined ms-10">warning</span>
+           ${c.manipulation_score >= 0.5 ? 'HIGH' : 'MED'} manipulation
+         </span>` : "";
+    const hlTags = c.highlights?.length
+      ? c.highlights.slice(0, 3).map(h =>
+          `<span class="hl-tag ${h.score >= 0.75 ? 'hl-high' : 'hl-med'}">${esc(h.phrase)}</span>`
+        ).join("") : "";
+
     el.innerHTML = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
         <div style="font-size:12.5px;color:var(--t1);line-height:1.55;flex:1">${esc(c.content || c.explanation || "")}</div>
@@ -32,11 +44,18 @@ function render(claims) {
           <span class="material-symbols-outlined ms-14">bookmark_remove</span>
         </button>
       </div>
-      <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span class="material-symbols-outlined ms-14 ${vClass}">${vIcon}</span>
         <span style="font-size:11px;font-weight:600;text-transform:uppercase" class="${vClass}">${v}</span>
-        <span style="font-size:11px;color:var(--t3);margin-left:auto">${Math.round((c.confidence || 0) * 100)}% confidence</span>
-      </div>`;
+        <span style="font-size:11px;color:var(--t3);margin-left:auto">${confPct}% confidence</span>
+      </div>
+      ${manipBadge}
+      ${hlTags ? `<div class="hl-tags" style="margin-top:5px">${hlTags}</div>` : ""}`;
+    el.style.cursor = "pointer";
+    el.addEventListener("click", e => {
+      if (e.target.closest(".unsave-btn")) return;
+      chrome.storage.local.set({ detailData: c }, () => nav("detail.html"));
+    });
     el.querySelector(".unsave-btn").addEventListener("click", () => unsave(i));
     list.appendChild(el);
   });
