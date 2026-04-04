@@ -152,17 +152,34 @@ async function googleWebAuthFlow() {
 
 async function exchangeAccessToken(accessToken) {
   try {
-    const res  = await fetch(`${API}/auth/google`, {
+    // Show waking hint after 4s — Render cold start can take 30-60s
+    const btn = document.querySelector("#google-login-btn, #google-signup-btn");
+    let hintTimer;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Signing in…";
+      hintTimer = setTimeout(() => { btn.textContent = "Waking up server…"; }, 4000);
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const res = await fetch(`${API}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: accessToken })
+      body: JSON.stringify({ access_token: accessToken }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
+    clearTimeout(hintTimer);
+    if (btn) { btn.disabled = false; btn.textContent = "Continue with Google"; }
     const data = await res.json();
     if (!res.ok) return showError(data.detail || "Google sign-in failed");
     await storeAuth(data);
     window.location.href = chrome.runtime.getURL("popup/popup.html");
   } catch(e) {
-    showError("Google sign-in failed: " + e.message);
+    const btn = document.querySelector("#google-login-btn, #google-signup-btn");
+    if (btn) { btn.disabled = false; btn.textContent = "Continue with Google"; }
+    if (e.name === "AbortError") showError("Server is starting up — please try again in a moment.");
+    else showError("Google sign-in failed: " + e.message);
   }
 }
 
