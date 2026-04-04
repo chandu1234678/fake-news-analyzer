@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -18,6 +19,35 @@ from app.models import User, ChatSession
 from app.routes.history_routes import save_message
 
 router = APIRouter()
+
+
+class FeedbackRequest(BaseModel):
+    claim_text: str
+    predicted: str
+    actual: str
+    confidence: Optional[float] = None
+
+
+@router.post("/feedback")
+def submit_feedback(
+    req: FeedbackRequest,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Store user correction for future retraining."""
+    from app.models import UserFeedback
+    if req.actual not in ("fake", "real"):
+        raise HTTPException(status_code=400, detail="actual must be 'fake' or 'real'")
+    fb = UserFeedback(
+        user_id    = user.id if user else None,
+        claim_text = req.claim_text[:1000],
+        predicted  = req.predicted,
+        actual     = req.actual,
+        confidence = req.confidence,
+    )
+    db.add(fb)
+    db.commit()
+    return {"message": "Feedback recorded. Thank you."}
 
 
 def _run_pipeline_parallel(text: str):

@@ -450,6 +450,7 @@ function addFactCard(data, scroll = true) {
       <div class="fact-actions">
         <button class="fact-btn view-btn">View Detail</button>
         <button class="fact-btn primary save-btn">Save Claim</button>
+        <button class="fact-btn feedback-btn" title="Report wrong verdict">⚑ Wrong?</button>
       </div>
     </div>`;
 
@@ -463,6 +464,7 @@ function addFactCard(data, scroll = true) {
   card.querySelector(".conf-bar").style.width  = `${confPct}%`;
   card.querySelector(".view-btn").addEventListener("click", () => viewDetail(data));
   card.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
+  card.querySelector(".feedback-btn").addEventListener("click", () => showFeedback(card, data));
 
   if (scroll) scrollBottom();
 }
@@ -480,6 +482,43 @@ function saveCard(data) {
     claims.unshift(data);
     chrome.storage.local.set({ savedClaims: claims.slice(0, 50) });
   });
+}
+
+function showFeedback(card, data) {
+  // Replace actions row with inline correction picker
+  const actionsEl = card.querySelector(".fact-actions");
+  actionsEl.innerHTML = `
+    <span class="feedback-prompt">Correct verdict:</span>
+    <button class="fact-btn feedback-real">✓ Real</button>
+    <button class="fact-btn feedback-fake">✗ Fake</button>
+    <button class="fact-btn feedback-cancel">Cancel</button>`;
+  actionsEl.querySelector(".feedback-real").addEventListener("click", () => submitFeedback(card, data, "real"));
+  actionsEl.querySelector(".feedback-fake").addEventListener("click", () => submitFeedback(card, data, "fake"));
+  actionsEl.querySelector(".feedback-cancel").addEventListener("click", () => {
+    actionsEl.innerHTML = `
+      <button class="fact-btn view-btn">View Detail</button>
+      <button class="fact-btn primary save-btn">Save Claim</button>
+      <button class="fact-btn feedback-btn" title="Report wrong verdict">⚑ Wrong?</button>`;
+    actionsEl.querySelector(".view-btn").addEventListener("click", () => viewDetail(data));
+    actionsEl.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
+    actionsEl.querySelector(".feedback-btn").addEventListener("click", () => showFeedback(card, data));
+  });
+}
+
+async function submitFeedback(card, data, actual) {
+  const actionsEl = card.querySelector(".fact-actions");
+  actionsEl.innerHTML = `<span class="feedback-prompt" style="color:var(--real)">✓ Feedback recorded</span>`;
+  try {
+    await authFetch("/feedback", {
+      method: "POST",
+      body: JSON.stringify({
+        claim_text: data.explanation || "",
+        predicted:  data.verdict || "uncertain",
+        actual,
+        confidence: data.confidence || null,
+      })
+    });
+  } catch(_) {}
 }
 
 // ── Send ──────────────────────────────────────────────────────

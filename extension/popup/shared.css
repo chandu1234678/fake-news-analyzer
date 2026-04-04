@@ -301,6 +301,13 @@ body {
   background: var(--a-dim); border-color: var(--a-bdr); color: var(--accent);
 }
 .fact-btn.primary:hover { background: rgba(192,193,255,0.14); }
+.feedback-prompt {
+  font-size: 10px; color: var(--t3); align-self: center;
+  white-space: nowrap; flex-shrink: 0;
+}
+.feedback-real { color: var(--real) !important; border-color: rgba(110,231,183,0.2) !important; }
+.feedback-fake { color: var(--fake) !important; border-color: rgba(252,165,165,0.2) !important; }
+.feedback-cancel { color: var(--t3) !important; }
 
 /* ── Verdict colors ── */
 .v-real { color: var(--real); }
