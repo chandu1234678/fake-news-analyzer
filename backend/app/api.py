@@ -181,14 +181,16 @@ def message(
 
     # Manipulation analysis (fast, no API call)
     manip_score, manip_signals = analyze_manipulation(text)
-    # Highlighted suspicious phrases
-    highlights = get_highlights(text) if verdict == "fake" or manip_score > 0.2 else []
+
     # ── Decision ───────────────────────────────────────────────
     verdict, confidence = decide(
         ml_fake=ml_result["fake"],
         ai_fake=ai_score,
         evidence_score=evidence_score,
     )
+
+    # Highlighted suspicious phrases (after verdict is known)
+    highlights = get_highlights(text) if verdict == "fake" or manip_score > 0.2 else []
 
     # Build evidence display: prefer article URLs, fallback to plain URLs
     display_evidence = (
