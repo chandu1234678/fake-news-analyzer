@@ -30,6 +30,13 @@ document.getElementById("nav-history").addEventListener("click",   () => { windo
 document.getElementById("nav-settings").addEventListener("click",  () => { window.location.href = chrome.runtime.getURL("popup/settings.html"); });
 
 // ── Init ──────────────────────────────────────────────────────
+// Show spinner immediately — before any async work
+chatContainer.innerHTML = `
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;opacity:0.5">
+    <div class="spin-ring"></div>
+    <span style="font-size:12px;color:var(--t3)">Loading…</span>
+  </div>`;
+
 chrome.storage.local.get(["token", "user", "currentSessionId"], async d => {
   if (!d.token) { window.location.href = chrome.runtime.getURL("popup/login.html"); return; }
   token = d.token;
@@ -139,6 +146,20 @@ async function switchSession(id) {
 }
 
 async function loadSessionMessages(sessionId) {
+  // Show skeleton while loading
+  chatContainer.innerHTML = `
+    <div class="skeleton-wrap">
+      <div class="skeleton-line" style="width:60%"></div>
+      <div class="skeleton-line" style="width:85%"></div>
+      <div class="skeleton-line" style="width:45%"></div>
+    </div>
+    <div class="skeleton-wrap" style="align-items:flex-end">
+      <div class="skeleton-line" style="width:50%"></div>
+    </div>
+    <div class="skeleton-wrap">
+      <div class="skeleton-line" style="width:75%"></div>
+      <div class="skeleton-line" style="width:90%"></div>
+    </div>`;
   try {
     const res = await authFetch(`/history/sessions/${sessionId}/messages`);
     if (!res.ok) { showWelcome(); return; }
@@ -311,20 +332,39 @@ function addChatReply(text, scroll = true, animate = true) {
   chatContainer.appendChild(row);
 
   if (!animate) {
-    bubble.textContent = text;
+    bubble.innerHTML = renderMarkdown(text);
     if (scroll) scrollBottom();
     return;
   }
 
-  // Word-by-word typewriter — faster and more natural than char-by-char
+  // Word-by-word typewriter then render markdown at end
   const words = text.split(" ");
   let i = 0;
   const tw = setInterval(() => {
-    bubble.textContent += (i === 0 ? "" : " ") + words[i];
     i++;
-    if (i >= words.length) clearInterval(tw);
+    bubble.textContent = words.slice(0, i).join(" ");
+    if (i >= words.length) {
+      clearInterval(tw);
+      bubble.innerHTML = renderMarkdown(text);
+    }
     if (scroll) scrollBottom();
   }, 35);
+}
+
+function renderMarkdown(text) {
+  return text
+    // Bold **text**
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    // Italic *text*
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    // Numbered list: "1. item" at start of line
+    .replace(/^(\d+)\.\s+(.+)$/gm, "<li style='margin:4px 0;list-style:decimal;margin-left:18px'>$2</li>")
+    // Bullet list: "- item" or "• item"
+    .replace(/^[-•]\s+(.+)$/gm, "<li style='margin:4px 0;list-style:disc;margin-left:18px'>$1</li>")
+    // Wrap consecutive <li> in <ol> or <ul>
+    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, m => `<ul style="margin:6px 0;padding:0">${m}</ul>`)
+    // Line breaks
+    .replace(/\n/g, "<br>");
 }
 
 function addFactCard(data, scroll = true, animate = true) {
@@ -533,7 +573,7 @@ function addFactCard(data, scroll = true, animate = true) {
   card.querySelector(".news-bar").style.width  = `${newsPct}%`;
   card.querySelector(".conf-bar").style.width  = `${confPct}%`;
   card.querySelector(".view-btn").addEventListener("click", () => viewDetail(data));
-  card.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
+  card.querySelector(".save-btn").addEventListener("click", e => saveCard(data, e.currentTarget));
   card.querySelector(".feedback-btn").addEventListener("click", () => showFeedback(card, data));
 
   // Typewriter effect on explanation (only for new messages)
@@ -558,13 +598,22 @@ function viewDetail(data) {
   chrome.storage.local.set({ detailData: data }, () => { window.location.href = chrome.runtime.getURL("popup/detail.html"); });
 }
 
-function saveCard(data) {
+function saveCard(data, btn) {
   chrome.storage.local.get("savedClaims", d => {
     const claims = d.savedClaims || [];
     const key = data.content || data.explanation || "";
-    if (claims.some(c => (c.content || c.explanation || "") === key)) return;
+    if (claims.some(c => (c.content || c.explanation || "") === key)) {
+      if (btn) { btn.textContent = "Already saved"; btn.disabled = true; }
+      return;
+    }
     claims.unshift(data);
     chrome.storage.local.set({ savedClaims: claims.slice(0, 50) });
+    if (btn) {
+      btn.textContent = "Saved ✓";
+      btn.style.background = "var(--real)";
+      btn.style.color = "#fff";
+      btn.disabled = true;
+    }
   });
 }
 
