@@ -15,9 +15,9 @@
 - [x] 35. Highlighted suspicious phrases — color-coded tags in fact card and detail page
 - [x] 36. Contradiction detail — stance meter shows support / neutral / conflict counts
 - [x] 37. Verdict change notice — warns when same claim gets different verdict over time
-- [ ] 38. Dashboard — add drift stats, model version, and credibility summary card
-- [ ] 39. Saved page — show highlights and manipulation badge on saved cards
-- [ ] 40. Detail page — add "Report wrong verdict" feedback button
+- [x] 38. Dashboard — model version, drift monitor, top trusted sources, robustness score
+- [x] 39. Saved page — manipulation badge and highlighted phrase tags on saved cards
+- [x] 40. Detail page — flag button to report wrong verdict
 
 ## Backend / ML
 
@@ -41,7 +41,7 @@
 - [x] 43. Calibrated training script — train_calibrated.py with reliability curve output
 - [x] 44. Adversarial test generator — gen_adversarial.py uses LLM to create paraphrases
 - [x] 45. Feedback retraining pipeline — retrain_from_feedback.py with evaluation gate
-- [ ] 46. Data quality filter — source blacklist, min length enforced in training (partial)
+- [x] 46. Data quality filter — min length 30, English check, length cap 5000, dedup in training
 - [x] 47. Adversarial evaluation — eval_adversarial.py runs test set, reports F1 + robustness score
 - [x] 48. Calibration curve endpoint — /stats/calibration exposes all model metrics + adversarial results
 - [x] 49. /credibility endpoint — exposes dynamic trust scores

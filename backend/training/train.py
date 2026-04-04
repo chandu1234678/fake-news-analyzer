@@ -83,7 +83,16 @@ df = pd.concat(frames, ignore_index=True)
 df = df.dropna(subset=["combined", "label"])
 df = df[df["combined"].str.len() > 20]   # drop near-empty rows
 df = df.drop_duplicates(subset=["combined"])
-print(f"\n📊 Total samples after merge+dedup: {len(df)}")
+
+# ── Data quality filter ────────────────────────────────────────
+# Minimum length: drop anything under 30 chars (noise)
+df = df[df["combined"].str.len() >= 30]
+# Drop rows with non-English or garbage content (basic heuristic)
+df = df[df["combined"].str.contains(r"[a-zA-Z]", regex=True)]
+# Cap max length to avoid memory issues with very long articles
+df["combined"] = df["combined"].str[:5000]
+
+print(f"\n📊 Total samples after merge+dedup+quality: {len(df)}")
 print(f"   Fake: {df['label'].sum()} | Real: {(df['label']==0).sum()}")
 
 # ── Train / test split ─────────────────────────────────────────────────────────
