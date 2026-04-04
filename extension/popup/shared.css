@@ -146,14 +146,13 @@ body {
 }
 .typing-step {
   font-size: 12px; color: var(--t3);
-  transition: opacity 0.3s ease, max-height 0.3s ease;
+  transition: opacity 0.2s ease;
   opacity: 0;
-  max-height: 0;
-  overflow: hidden;
+  display: none;
 }
 .typing-step.active {
+  display: block;
   color: var(--accent); opacity: 1;
-  max-height: 24px;
 }
 
 /* ── Fact card ── */

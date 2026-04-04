@@ -152,9 +152,9 @@ async function loadSessionMessages(sessionId) {
         history.push({ role: "user", content: m.content });
       } else {
         if (m.is_claim) {
-          addFactCard(m, false);
+          addFactCard(m, false, false);
         } else {
-          addChatReply(m.content, false);
+          addChatReply(m.content, false, false);
           history.push({ role: "assistant", content: m.content });
         }
       }
@@ -298,7 +298,7 @@ function addTyping() {
   return row;
 }
 
-function addChatReply(text, scroll = true) {
+function addChatReply(text, scroll = true, animate = true) {
   const row = document.createElement("div");
   row.className = "bot-row";
   const avatar = document.createElement("div");
@@ -309,6 +309,12 @@ function addChatReply(text, scroll = true) {
   row.appendChild(avatar);
   row.appendChild(bubble);
   chatContainer.appendChild(row);
+
+  if (!animate) {
+    bubble.textContent = text;
+    if (scroll) scrollBottom();
+    return;
+  }
 
   // Word-by-word typewriter — faster and more natural than char-by-char
   const words = text.split(" ");
@@ -321,7 +327,7 @@ function addChatReply(text, scroll = true) {
   }, 35);
 }
 
-function addFactCard(data, scroll = true) {
+function addFactCard(data, scroll = true, animate = true) {
   const verdict  = (data.verdict || "uncertain").toLowerCase();
   const confPct  = Math.round((data.confidence || 0) * 100);
   const mlPct    = Math.round((data.ml_score   || 0) * 100);
@@ -530,9 +536,9 @@ function addFactCard(data, scroll = true) {
   card.querySelector(".save-btn").addEventListener("click", () => saveCard(data));
   card.querySelector(".feedback-btn").addEventListener("click", () => showFeedback(card, data));
 
-  // Typewriter effect on explanation
+  // Typewriter effect on explanation (only for new messages)
   const explEl = card.querySelector(".fact-expl");
-  if (explEl && data.explanation) {
+  if (explEl && data.explanation && animate) {
     const full = data.explanation;
     explEl.textContent = "";
     let i = 0;
