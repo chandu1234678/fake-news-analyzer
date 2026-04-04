@@ -359,6 +359,19 @@ function addFactCard(data, scroll = true) {
     }).join("");
   }
 
+  // Manipulation badge
+  let manipHtml = "";
+  if (data.manipulation_score > 0.15 && data.manipulation_signals?.length) {
+    const level = data.manipulation_score >= 0.5 ? "HIGH" : "MED";
+    const cls   = data.manipulation_score >= 0.5 ? "manip-high" : "manip-med";
+    const tags  = data.manipulation_signals.slice(0, 3).join(" · ");
+    manipHtml = `
+      <div class="manip-badge ${cls}">
+        <span class="material-symbols-outlined ms-12">warning</span>
+        Manipulation signals (${level}): ${esc(tags)}
+      </div>`;
+  }
+
   const explHtml = data.explanation
     ? `<div class="fact-expl">${esc(data.explanation)}</div>` : "";
 
@@ -444,6 +457,7 @@ function addFactCard(data, scroll = true) {
         <div class="score-track"><div class="score-fill ${newsFill} news-bar"></div></div>
         <span class="score-num">${newsPct}%</span>
       </div>
+      ${manipHtml}
       ${explHtml}
       ${stanceHtml}
       ${srcSection}

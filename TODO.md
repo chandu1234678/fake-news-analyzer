@@ -23,7 +23,7 @@
 - [x] 14. Confidence calibration — isotonic regression via CalibratedClassifierCV (done in item 13)
 - [x] 15. Uncertainty output — return "Insufficient evidence" when confidence is low and sources conflict
 - [x] 16. Ablation study — measure F1 with/without each pipeline component
-- [ ] 31. Manipulation / bias detection — score emotional language, clickbait patterns in claim text
+- [x] 31. Manipulation / bias detection — score emotional language, clickbait patterns in claim text
 - [ ] 32. Claim extraction — for long inputs, split into atomic sub-claims and verify each separately
 
 ## Architecture / Robustness

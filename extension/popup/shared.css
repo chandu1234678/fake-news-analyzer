@@ -206,6 +206,13 @@ body {
   border-radius: 6px; padding: 5px 8px;
   line-height: 1.5; margin-top: 2px;
 }
+.manip-badge {
+  display: flex; align-items: flex-start; gap: 5px;
+  font-size: 10px; border-radius: 6px; padding: 5px 8px;
+  line-height: 1.5;
+}
+.manip-high { background: rgba(252,165,165,0.08); color: var(--fake); }
+.manip-med  { background: rgba(252,211,77,0.07);  color: var(--warn); }
 
 /* ── Stance / Contradiction meter ── */
 .stance-meter {

@@ -20,3 +20,6 @@ class MessageResponse(BaseModel):
     evidence_articles: Optional[List[dict]] = None
     # Stance breakdown: {"support": int, "contradict": int, "neutral": int}
     stance_summary: Optional[dict] = None
+    # Manipulation detection
+    manipulation_score: Optional[float] = None
+    manipulation_signals: Optional[List[str]] = None

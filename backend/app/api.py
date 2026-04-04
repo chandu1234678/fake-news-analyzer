@@ -13,6 +13,7 @@ from app.analysis.ml import run_ml_analysis
 from app.analysis.ai import run_ai_analysis
 from app.analysis.evidence import fetch_evidence
 from app.analysis.chat import is_claim, run_chat
+from app.analysis.manipulation import analyze_manipulation
 from app.logic.decision import decide
 from app.auth import get_current_user_optional
 from app.models import User, ChatSession
@@ -137,6 +138,9 @@ def message(
 
     ai_score = float(raw_ai_score) if raw_ai_score is not None else 0.5
 
+    # Manipulation analysis (fast, no API call)
+    manip_score, manip_signals = analyze_manipulation(text)
+
     # ── Decision ───────────────────────────────────────────────
     verdict, confidence = decide(
         ml_fake=ml_result["fake"],
@@ -168,6 +172,8 @@ def message(
         "evidence": display_evidence,
         "evidence_articles": evidence_articles,
         "stance_summary": stance_summary,
+        "manipulation_score": manip_score,
+        "manipulation_signals": manip_signals,
     }
 
     if session_id:
