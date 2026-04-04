@@ -2,6 +2,7 @@ import os
 import re
 import requests
 from dotenv import load_dotenv
+from app.analysis.credibility import get_trust_score, get_trust_label, update_from_stance
 
 _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
 load_dotenv(_env_path)
@@ -61,16 +62,14 @@ def _stance(title: str, description: str) -> str:
 
 def _consistency_score(articles: list) -> float:
     """
-    Compute evidence consistency as a real-signal score (0–1).
-    More supporting trusted sources → higher score (real signal).
-    More contradicting sources → lower score (fake signal).
+    Compute evidence consistency weighted by source trust score.
+    High-trust sources supporting real → higher score.
     """
-    support    = sum(1 for a in articles if a.get("stance") == "support")
-    contradict = sum(1 for a in articles if a.get("stance") == "contradict")
+    support    = sum(a.get("trust_score", 0.5) for a in articles if a.get("stance") == "support")
+    contradict = sum(a.get("trust_score", 0.5) for a in articles if a.get("stance") == "contradict")
     total = support + contradict
     if total == 0:
-        return 0.5  # neutral / unknown
-    # Ratio of support vs total signal
+        return 0.5
     return round(support / total, 2)
 
 
@@ -118,11 +117,14 @@ def fetch_evidence(text: str):
 
             if src_id in TRUSTED_SOURCES or src_name in TRUSTED_SOURCES:
                 stance = _stance(title, desc)
+                trust  = get_trust_score(url)
                 trusted_articles.append({
-                    "title":  title,
-                    "url":    url,
-                    "source": src.get("name", ""),
-                    "stance": stance,
+                    "title":       title,
+                    "url":         url,
+                    "source":      src.get("name", ""),
+                    "stance":      stance,
+                    "trust_score": trust,
+                    "trust_label": get_trust_label(url),
                 })
 
         if not trusted_articles:

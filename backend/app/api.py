@@ -17,6 +17,7 @@ from app.analysis.manipulation import analyze_manipulation
 from app.analysis.claim_extractor import extract_claims
 from app.analysis.drift import record as record_drift
 from app.analysis.highlight import get_highlights
+from app.analysis.credibility import update_from_stance, get_all_scores
 from app.logic.decision import decide
 from app.auth import get_current_user_optional
 from app.models import User, ChatSession
@@ -30,6 +31,12 @@ class FeedbackRequest(BaseModel):
     predicted: str
     actual: str
     confidence: Optional[float] = None
+
+
+@router.get("/credibility")
+def source_credibility():
+    """Return dynamic trust scores for all tracked domains."""
+    return {"sources": get_all_scores()}
 
 
 @router.post("/feedback")
@@ -51,6 +58,12 @@ def submit_feedback(
     )
     db.add(fb)
     db.commit()
+
+    # Update source credibility based on feedback
+    # (we don't have articles here, but log the correction for future use)
+    logger.info("Feedback: predicted=%s actual=%s conf=%.2f",
+                req.predicted, req.actual, req.confidence or 0)
+
     return {"message": "Feedback recorded. Thank you."}
 
 

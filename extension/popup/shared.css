@@ -745,3 +745,15 @@ textarea#input-text::-webkit-scrollbar { display: none; }
   padding: 4px 8px;
   margin-top: 6px;
 }
+
+/* ── Low credibility source tag ─────────────────────────────── */
+.cred-low {
+  background: rgba(248,113,113,.12);
+  color: #f87171;
+  border: 1px solid rgba(248,113,113,.25);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
