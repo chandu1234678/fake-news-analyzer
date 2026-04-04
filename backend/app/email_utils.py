@@ -10,7 +10,7 @@ load_dotenv(_env_path)
 
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-FROM_EMAIL    = os.getenv("SMTP_USER", "bc833498@gmail.com")
+FROM_EMAIL    = os.getenv("SMTP_USER", "factcheckai2@gmail.com")
 FROM_NAME     = "FactChecker AI"
 
 logger = logging.getLogger(__name__)
@@ -24,11 +24,18 @@ def send_otp_email(to_email: str, otp: str) -> bool:
     if not BREVO_API_KEY:
         raise RuntimeError("BREVO_API_KEY is not configured.")
 
-    digits = "".join([
-        f'<td style="padding:0 5px;">'
-        f'<div style="width:52px;height:64px;background:#1c2333;border:2px solid #3d4663;'
-        f'border-radius:12px;font-size:32px;font-weight:700;color:#ffffff;'
-        f'text-align:center;line-height:64px;font-family:\'Courier New\',monospace;">{d}</div></td>'
+    digit_cells = "".join([
+        f"""<td style="padding:0 5px;">
+<div style="
+  width:56px;height:72px;
+  background:#f5f5f7;
+  border-radius:14px;
+  font-size:36px;font-weight:600;
+  color:#1d1d1f;
+  text-align:center;line-height:72px;
+  font-family:-apple-system,'SF Pro Display','Helvetica Neue',Helvetica,Arial,sans-serif;
+  letter-spacing:-1px;
+">{d}</div></td>"""
         for d in otp
     ])
 
@@ -37,79 +44,84 @@ def send_otp_email(to_email: str, otp: str) -> bool:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Password Reset</title>
+  <title>Your verification code</title>
 </head>
-<body style="margin:0;padding:0;background:#0f1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="480" cellpadding="0" cellspacing="0"
-        style="max-width:480px;width:100%;background:#161b27;border-radius:20px;
-               border:1px solid #2a3147;overflow:hidden;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,'SF Pro Text','Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#1d1d1f;">
 
-        <!-- Header -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:64px 24px 48px;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
+
+        <!-- Logo mark -->
         <tr>
-          <td style="padding:28px 32px 20px;">
+          <td align="center" style="padding-bottom:40px;">
+            <div style="
+              width:56px;height:56px;
+              background:#1d1d1f;
+              border-radius:14px;
+              text-align:center;line-height:56px;
+              font-size:26px;
+            ">✓</div>
+          </td>
+        </tr>
+
+        <!-- Headline -->
+        <tr>
+          <td align="center" style="padding-bottom:12px;">
+            <h1 style="margin:0;font-size:28px;font-weight:700;color:#1d1d1f;letter-spacing:-0.5px;line-height:1.2;">
+              Verify it's you
+            </h1>
+          </td>
+        </tr>
+
+        <!-- Subtext -->
+        <tr>
+          <td align="center" style="padding-bottom:48px;">
+            <p style="margin:0;font-size:17px;color:#6e6e73;line-height:1.5;max-width:360px;">
+              Enter this code to reset your FactChecker AI password.
+              It expires in 10 minutes.
+            </p>
+          </td>
+        </tr>
+
+        <!-- OTP digits -->
+        <tr>
+          <td align="center" style="padding-bottom:48px;">
             <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding-right:12px;vertical-align:middle;">
-                  <div style="width:40px;height:40px;background:#6c63ff;border-radius:10px;
-                    text-align:center;line-height:40px;font-size:20px;">✓</div>
-                </td>
-                <td style="vertical-align:middle;">
-                  <span style="font-size:18px;font-weight:700;color:#ffffff;">FactChecker</span>
-                  <span style="font-size:18px;font-weight:700;color:#f59e0b;"> AI</span>
-                </td>
-              </tr>
+              <tr>{digit_cells}</tr>
             </table>
           </td>
         </tr>
 
         <!-- Divider -->
-        <tr><td style="height:1px;background:#2a3147;margin:0 32px;"></td></tr>
-
-        <!-- Body -->
         <tr>
-          <td style="padding:28px 32px;">
+          <td style="height:1px;background:#d2d2d7;margin-bottom:32px;"></td>
+        </tr>
 
-            <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ffffff;">
-              Password Reset
+        <!-- Security note -->
+        <tr>
+          <td align="center" style="padding-top:32px;padding-bottom:16px;">
+            <p style="margin:0;font-size:13px;color:#6e6e73;line-height:1.6;max-width:380px;">
+              Never share this code with anyone.
+              FactChecker AI will never ask for it by phone or message.
             </p>
-            <p style="margin:0 0 24px;font-size:14px;color:#8892a4;line-height:1.6;">
-              We received a request to reset your password. Use the code below — it's valid for
-              <strong style="color:#ffffff;">10 minutes</strong>.
+          </td>
+        </tr>
+
+        <!-- Ignore note -->
+        <tr>
+          <td align="center" style="padding-bottom:48px;">
+            <p style="margin:0;font-size:13px;color:#aeaeb2;line-height:1.6;">
+              Didn't request this? Ignore this email — your account is safe.
             </p>
-
-            <!-- OTP digits -->
-            <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-              <tr>{digits}</tr>
-            </table>
-
-            <!-- Security tip -->
-            <table width="100%" cellpadding="0" cellspacing="0"
-              style="background:#1c2333;border-radius:12px;padding:14px 16px;margin-bottom:24px;">
-              <tr>
-                <td>
-                  <p style="margin:0;font-size:13px;color:#8892a4;line-height:1.6;">
-                    🔒 <strong style="color:#c9d1d9;">Security tip:</strong> Never share this code with
-                    anyone. FactChecker AI will never ask for it via chat or phone.
-                  </p>
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
-              If you didn't request a password reset, you can safely ignore this email.
-              Your account remains secure.
-            </p>
-
           </td>
         </tr>
 
         <!-- Footer -->
         <tr>
-          <td style="padding:16px 32px 24px;border-top:1px solid #2a3147;">
-            <p style="margin:0;font-size:12px;color:#4b5563;text-align:center;">
-              Sent by FactChecker AI · {FROM_EMAIL}
+          <td align="center">
+            <p style="margin:0;font-size:12px;color:#aeaeb2;letter-spacing:0.1px;">
+              FactChecker AI &nbsp;·&nbsp; © 2026
             </p>
           </td>
         </tr>
@@ -117,6 +129,7 @@ def send_otp_email(to_email: str, otp: str) -> bool:
       </table>
     </td></tr>
   </table>
+
 </body>
 </html>"""
 
