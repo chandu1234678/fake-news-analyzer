@@ -21,11 +21,16 @@ def _get_model_version() -> dict:
 
 @router.api_route("/health", methods=["GET", "HEAD"])
 def health():
-    from app.analysis.drift import get_stats as drift_stats
+    mv = _get_model_version()
+    try:
+        from app.analysis.drift import get_stats as drift_stats
+        drift = drift_stats()
+    except Exception:
+        drift = {}
     return {
         "status": "ok",
         "version": "2.0.0",
         "ts": int(time.time()),
-        "model": _get_model_version(),
-        "drift": drift_stats(),
+        "model": mv,
+        "drift": drift,
     }

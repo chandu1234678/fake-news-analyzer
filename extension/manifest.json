@@ -30,6 +30,9 @@
       "128": "icons/icon128.png"
     }
   },
+  "side_panel": {
+    "default_path": "popup/popup.html"
+  },
   "background": {
     "service_worker": "background/service_worker.js"
   },
