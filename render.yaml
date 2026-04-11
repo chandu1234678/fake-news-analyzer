@@ -26,3 +26,11 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: DEBERTA_MODEL
+        sync: false
+      - key: BRAVE_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: GOOGLE_FACTCHECK_API_KEY
+        sync: false
