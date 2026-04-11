@@ -283,10 +283,19 @@ function getCredTag(url) {
   } catch { return { label: "MED", cls: "cred-med" }; }
 }
 
-function addUserMsg(text, scroll = true) {
+function addUserMsg(text, scroll = true, imageUrl = null) {
   const el = document.createElement("div");
   el.className = "user-bubble";
-  el.textContent = text;
+  if (imageUrl) {
+    const img = document.createElement("img");
+    img.src = imageUrl;
+    img.style.cssText = "max-width:100%;max-height:160px;border-radius:8px;display:block;margin-bottom:6px;object-fit:cover";
+    img.alt = "attached image";
+    el.appendChild(img);
+  }
+  const textNode = document.createElement("span");
+  textNode.textContent = text;
+  el.appendChild(textNode);
   chatContainer.appendChild(el);
   if (scroll) scrollBottom();
 }
@@ -656,24 +665,106 @@ async function submitFeedback(card, data, actual) {
   } catch(_) {}
 }
 
-// ── Send ──────────────────────────────────────────────────────
+// ── Attach menu ───────────────────────────────────────────────
+let attachedImageUrl = null;
+let attachedFileText = null;
+let attachedFileName = null;
+
+const attachBtn  = document.getElementById("attach-btn");
+const attachMenu = document.getElementById("attach-menu");
+
+// Toggle menu on + click
+attachBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  attachMenu.style.display = attachMenu.style.display === "none" ? "block" : "none";
+});
+// Close menu on outside click
+document.addEventListener("click", () => { attachMenu.style.display = "none"; });
+
+function _showPreview(icon, name) {
+  document.getElementById("attach-preview-icon").textContent = icon;
+  document.getElementById("attach-preview-name").textContent = name;
+  document.getElementById("attach-preview-bar").style.display = "flex";
+  attachMenu.style.display = "none";
+}
+
+function _clearAttach() {
+  attachedImageUrl = null;
+  attachedFileText = null;
+  attachedFileName = null;
+  document.getElementById("attach-preview-bar").style.display = "none";
+  ["file-image","file-pdf","file-txt"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+}
+
+document.getElementById("attach-remove-btn").addEventListener("click", _clearAttach);
+
+// Image
+document.getElementById("file-image").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    attachedImageUrl = reader.result;
+    attachedFileName = file.name;
+    _showPreview("image", file.name);
+  };
+  reader.readAsDataURL(file);
+});
+
+// PDF — extract text via FileReader (reads as text for .txt fallback, PDF needs server)
+document.getElementById("file-pdf").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  attachedFileName = file.name;
+  // For PDF we send filename as context hint — actual text extraction needs server
+  // For now, set the filename in the input as a prompt
+  inputText.value = `[PDF: ${file.name}] `;
+  attachedFileText = `PDF file: ${file.name}`;
+  _showPreview("picture_as_pdf", file.name);
+  autoResize();
+  inputText.focus();
+});
+
+// Text file
+document.getElementById("file-txt").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result.slice(0, 3000); // cap at 3000 chars
+    attachedFileText = text;
+    attachedFileName = file.name;
+    // Auto-fill textarea with file content
+    inputText.value = text;
+    autoResize();
+    _showPreview("description", file.name);
+    inputText.focus();
+  };
+  reader.readAsText(file);
+});
 async function send() {
   const text = inputText.value.trim();
   if (!text) return;
   inputText.value = "";
   autoResize();
 
-  // Clear welcome screen if present
   if (chatContainer.querySelector(".welcome-screen")) {
     chatContainer.innerHTML = "";
   }
 
-  addUserMsg(text);
+  // Capture and clear attachments before async
+  const imageUrl = attachedImageUrl;
+  _clearAttach();
+  addUserMsg(text, true, imageUrl);
   const typing = addTyping();
   sendBtn.disabled = true;
 
   try {
     const body = { message: text, session_id: currentSessionId, history };
+    if (imageUrl) body.image_url = imageUrl;
     const res  = await authFetch("/message", { method: "POST", body: JSON.stringify(body) });
     if (!res.ok) throw new Error(`Server error ${res.status}`);
     const data = await res.json();

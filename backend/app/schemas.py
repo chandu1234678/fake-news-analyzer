@@ -17,6 +17,7 @@ class MessageRequest(BaseModel):
     message: str
     session_id: Optional[int] = None
     history: Optional[List[dict]] = []
+    image_url: Optional[str] = None   # URL of image attached to the claim
 
     @field_validator("message")
     @classmethod
@@ -25,6 +26,16 @@ class MessageRequest(BaseModel):
         if not v:
             raise ValueError("Message cannot be empty")
         return v
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("image_url must be a valid http/https URL")
+        return v[:500]
 
 class MessageResponse(BaseModel):
     is_claim: bool

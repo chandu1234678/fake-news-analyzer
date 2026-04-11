@@ -89,7 +89,9 @@ def _run_pipeline_parallel(text: str, db=None):
     def do_image():
         try:
             from app.analysis.image_check import check_image_consistency
-            return check_image_consistency(text)
+            # Use provided image_url if given, otherwise extract from text
+            img_text = req.image_url or text
+            return check_image_consistency(text, article_text=img_text)
         except Exception:
             return None
     def do_platform():

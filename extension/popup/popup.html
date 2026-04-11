@@ -73,7 +73,37 @@
     <div id="chat-container"></div>
 
     <div class="input-area">
+      <!-- Attachment preview bar -->
+      <div id="attach-preview-bar" style="display:none;align-items:center;gap:8px;padding:4px 12px 2px;font-size:11px;color:var(--t3)">
+        <span class="material-symbols-outlined ms-12" id="attach-preview-icon" style="color:var(--accent)">image</span>
+        <span id="attach-preview-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <button id="attach-remove-btn" style="background:none;border:none;cursor:pointer;color:var(--t3);padding:0;line-height:1">
+          <span class="material-symbols-outlined ms-12">close</span>
+        </button>
+      </div>
+
       <div class="input-box">
+        <!-- + attach menu -->
+        <div style="position:relative">
+          <button id="attach-btn" class="icon-btn" title="Attach file" style="position:relative">
+            <span class="material-symbols-outlined ms-18">add_circle</span>
+          </button>
+          <div id="attach-menu" style="display:none;position:absolute;bottom:40px;left:0;background:var(--surface);border:1px solid var(--a-bdr);border-radius:12px;padding:6px;min-width:150px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:100">
+            <label class="attach-menu-item">
+              <span class="material-symbols-outlined ms-14">image</span> Image
+              <input type="file" id="file-image" accept="image/*" style="display:none">
+            </label>
+            <label class="attach-menu-item">
+              <span class="material-symbols-outlined ms-14">picture_as_pdf</span> PDF
+              <input type="file" id="file-pdf" accept=".pdf" style="display:none">
+            </label>
+            <label class="attach-menu-item">
+              <span class="material-symbols-outlined ms-14">description</span> Text file
+              <input type="file" id="file-txt" accept=".txt,.md,.csv" style="display:none">
+            </label>
+          </div>
+        </div>
+
         <textarea id="input-text" rows="1" placeholder="Ask anything or paste a claim…"></textarea>
         <button id="send-btn">
           <span class="material-symbols-outlined">send</span>

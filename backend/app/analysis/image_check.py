@@ -137,19 +137,17 @@ def _gemini_vision_check(image_url: str, claim_text: str) -> dict:
 
 def check_image_consistency(claim_text: str, article_text: str = "") -> dict:
     """
-    Main entry point. Extracts images from article text and checks
-    consistency with the claim.
-
-    Returns:
-        {
-          "images_found": int,
-          "checks": list of check results,
-          "mismatch_risk": float 0-1,
-          "flag": str | None
-        }
+    Main entry point. Checks image consistency with the claim.
+    Accepts both http URLs and base64 data URIs (from file upload).
     """
     combined = f"{claim_text} {article_text}"
-    image_urls = extract_image_urls(combined)
+
+    # Check for base64 data URI first (from extension file upload)
+    data_uri_match = re.match(r'^data:image/[^;]+;base64,', article_text or "")
+    if data_uri_match:
+        image_urls = [article_text]  # treat the data URI as the image
+    else:
+        image_urls = extract_image_urls(combined)
 
     if not image_urls:
         return {"images_found": 0, "checks": [], "mismatch_risk": 0.0, "flag": None}
@@ -157,11 +155,9 @@ def check_image_consistency(claim_text: str, article_text: str = "") -> dict:
     checks = []
     mismatch_signals = 0
 
-    for url in image_urls[:2]:  # check max 2 images to stay fast
-        # Try Gemini vision first (more accurate)
+    for url in image_urls[:2]:
         result = _gemini_vision_check(url, claim_text)
         if not result.get("available"):
-            # Fall back to reverse image search
             result = _reverse_image_search(url)
 
         if result.get("available"):
