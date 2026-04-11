@@ -68,6 +68,9 @@ def publisher_bias():
     """Return political bias ratings for all tracked publishers."""
     from app.analysis.publisher_bias import get_all_bias_ratings
     return {"publishers": get_all_bias_ratings()}
+
+
+@router.get("/calibration")
 def calibration_data():
     """
     Returns calibration curve data points + adversarial evaluation results.

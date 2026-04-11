@@ -19,6 +19,7 @@ from app.analysis.drift import record as record_drift
 from app.analysis.highlight import get_highlights
 from app.analysis.credibility import update_from_stance, get_all_scores
 from app.analysis.multilingual import normalize_claim
+from app.analysis.explainability import build_explanation
 from app.logic.decision import decide
 from app.auth import get_current_user_optional
 from app.models import User, ChatSession
@@ -60,10 +61,17 @@ def submit_feedback(
     db.add(fb)
     db.commit()
 
-    # Update source credibility based on feedback
-    # (we don't have articles here, but log the correction for future use)
     logger.info("Feedback: predicted=%s actual=%s conf=%.2f",
                 req.predicted, req.actual, req.confidence or 0)
+
+    # Trigger auto-retraining if threshold reached
+    try:
+        from app.analysis.continuous_learning import maybe_retrain
+        retrain_status = maybe_retrain(db)
+        if retrain_status.get("triggered"):
+            logger.info("Auto-retrain triggered: %s", retrain_status["reason"])
+    except Exception as e:
+        logger.debug("Continuous learning check failed: %s", e)
 
     return {"message": "Feedback recorded. Thank you."}
 
@@ -253,6 +261,25 @@ def message(
         s = a.get("stance", "neutral")
         stance_summary[s] = stance_summary.get(s, 0) + 1
 
+    # ── Explainability report ──────────────────────────────────
+    explainability = build_explanation(
+        verdict=verdict,
+        confidence=confidence,
+        ml_score=ml_result["fake"],
+        ai_score=ai_score,
+        evidence_score=evidence_score,
+        manipulation_score=manip_score,
+        manipulation_signals=manip_signals,
+        entity_verifications=entity_verifications,
+        entity_risk=entity_risk,
+        evidence_articles=evidence_articles,
+        previously_debunked=platform_result.get("previously_debunked", False),
+        debunk_sources=platform_result.get("debunk_sources", []),
+        image_mismatch_risk=image_result.get("mismatch_risk", 0.0),
+        was_translated=was_translated,
+        detected_language=detected_lang if was_translated else None,
+    )
+
     result = {
         "is_claim": True,
         "session_id": session_id,
@@ -283,6 +310,8 @@ def message(
         "previously_debunked": platform_result.get("previously_debunked") or None,
         "debunk_sources": platform_result.get("debunk_sources") or None,
         "spread_risk": platform_result.get("spread_risk") if platform_result.get("spread_risk", 0) > 0 else None,
+        # Explainability
+        "explainability": explainability,
     }
 
     if session_id:

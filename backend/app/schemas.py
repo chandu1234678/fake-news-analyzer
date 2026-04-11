@@ -56,3 +56,4 @@ class MessageResponse(BaseModel):
     previously_debunked: Optional[bool] = None
     debunk_sources: Optional[List[str]] = None
     spread_risk: Optional[float] = None
+    explainability: Optional[dict] = None
