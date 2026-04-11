@@ -1,15 +1,7 @@
 {
-  "version": "20260411_1411",
-  "train_samples": 24555,
-  "test_samples": 2729,
-  "accuracy": 0.985,
-  "brier_score": 0.0119,
-  "tfidf_features": 75000,
-  "datasets": [
-    "clmentbisaillon/fake-and-real-news-dataset",
-    "ErfanMoosaviMonazzah/fake-news-detection-dataset-English",
-    "difraud/difraud",
-    "newsmediabias/fake_news_elections_labelled_data",
-    "ucsbnlp/liar"
-  ]
+  "model": "Bharat2004/factchecker-deberta",
+  "base": "distilbert-base-uncased",
+  "version": "20260411_1951",
+  "accuracy": 0.9891,
+  "f1_macro": 0.9891
 }
