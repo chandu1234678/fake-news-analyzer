@@ -10,7 +10,7 @@ psutil
 requests
 pandas
 numpy
-scikit-learn
+scikit-learn==1.6.1
 joblib
 google-generativeai
 python-jose[cryptography]

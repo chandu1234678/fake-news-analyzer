@@ -719,13 +719,6 @@ async function authFetch(path, opts = {}) {
   if (res.status === 401) {
     chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });
   }
-  // Validate Content-Type before parsing JSON to avoid parsing HTML error pages
-  const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("application/json") && res.status !== 204) {
-    const err = new Error(`Unexpected response type: ${ct} (status ${res.status})`);
-    err.status = res.status;
-    throw err;
-  }
   return res;
 }
 
