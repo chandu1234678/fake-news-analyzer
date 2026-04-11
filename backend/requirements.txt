@@ -12,6 +12,7 @@ pandas
 numpy
 scikit-learn==1.6.1
 joblib
+langdetect
 google-generativeai
 python-jose[cryptography]
 bcrypt==4.1.3

@@ -49,3 +49,10 @@ class MessageResponse(BaseModel):
     verdict_changed: Optional[bool] = None
     entity_verifications: Optional[List[dict]] = None
     entity_risk: Optional[float] = None
+    detected_language: Optional[str] = None
+    was_translated: Optional[bool] = None
+    image_check: Optional[dict] = None
+    fact_checks: Optional[List[dict]] = None
+    previously_debunked: Optional[bool] = None
+    debunk_sources: Optional[List[str]] = None
+    spread_risk: Optional[float] = None
