@@ -4,6 +4,7 @@ gunicorn
 python-dotenv
 pydantic[email]==2.10.6
 sqlalchemy
+alembic
 psycopg2-binary
 requests
 pandas

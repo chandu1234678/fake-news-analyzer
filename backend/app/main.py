@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,11 +14,23 @@ from app.routes.stats_routes import router as stats_router
 from app.health import router as health_router
 from app.middleware import SecurityMiddleware
 
-# ── Logging ───────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+# ── Structured JSON logging ───────────────────────────────────
+class _JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log = {
+            "ts":      self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level":   record.levelname,
+            "logger":  record.name,
+            "msg":     record.getMessage(),
+        }
+        if record.exc_info:
+            log["exc"] = self.formatException(record.exc_info)
+        return json.dumps(log)
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_JsonFormatter())
+logging.root.handlers = [_handler]
+logging.root.setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +44,19 @@ logging.getLogger("uvicorn.access").addFilter(_SuppressHealthLogs())
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+
+    # ── Preload ML model at startup (avoids cold-start latency on first request) ─
+    try:
+        from app.analysis.ml import _load_roberta, _load_tfidf
+        import asyncio
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _load_roberta)
+        await loop.run_in_executor(None, _load_tfidf)
+        logger.info("ML models preloaded")
+    except Exception as e:
+        logger.warning("ML model preload failed (will load on first request): %s", e)
+
+    # ── Train TF-IDF if no model file exists ──────────────────
     model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "model.joblib")
     if not os.path.exists(model_path):
         try:

@@ -14,7 +14,10 @@ from google.auth.transport import requests as google_requests
 from database import get_db
 from app.models import User
 
-SECRET_KEY  = os.getenv("JWT_SECRET", "change-me-in-production-use-long-random-string")
+SECRET_KEY  = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable must be set — generate with: python -c \"import secrets; print(secrets.token_hex(32))\"")
+
 ALGORITHM   = "HS256"
 TOKEN_TTL_DAYS = 30
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

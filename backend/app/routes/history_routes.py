@@ -13,14 +13,23 @@ router = APIRouter(prefix="/history", tags=["history"])
 # ── Sessions ─────────────────────────────────────────────────
 
 @router.get("/sessions")
-def list_sessions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_sessions(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
+):
+    limit = min(limit, 100)  # cap at 100
     sessions = (
         db.query(ChatSession)
         .filter(ChatSession.user_id == user.id)
         .order_by(ChatSession.updated_at.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
-    return [_session_dict(s) for s in sessions]
+    total = db.query(ChatSession).filter(ChatSession.user_id == user.id).count()
+    return {"sessions": [_session_dict(s) for s in sessions], "total": total, "limit": limit, "offset": offset}
 
 
 @router.post("/sessions")

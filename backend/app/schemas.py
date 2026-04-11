@@ -1,10 +1,30 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
+import re
+
+# Strip HTML tags and null bytes from user-supplied strings
+_TAG_RE = re.compile(r"<[^>]+>")
+
+def _sanitize(v: str) -> str:
+    if not isinstance(v, str):
+        return v
+    v = v.replace("\x00", "")          # null bytes
+    v = _TAG_RE.sub("", v)             # strip HTML tags
+    return v.strip()
+
 
 class MessageRequest(BaseModel):
     message: str
     session_id: Optional[int] = None
     history: Optional[List[dict]] = []
+
+    @field_validator("message")
+    @classmethod
+    def sanitize_message(cls, v):
+        v = _sanitize(v)
+        if not v:
+            raise ValueError("Message cannot be empty")
+        return v
 
 class MessageResponse(BaseModel):
     is_claim: bool

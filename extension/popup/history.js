@@ -35,7 +35,8 @@ async function load() {
       if (res.status === 401) { nav("login.html"); return; }
       throw new Error(`Server error ${res.status}`);
     }
-    sessions = await res.json();
+    const data = await res.json();
+    sessions = Array.isArray(data) ? data : (data.sessions || []);
     render();
   } catch(e) {
     list.innerHTML = `

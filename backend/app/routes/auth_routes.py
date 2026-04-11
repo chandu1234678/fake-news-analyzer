@@ -176,6 +176,16 @@ def reset_password(req: VerifyOTPRequest, db: Session = Depends(get_db)):
     if len(req.new_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
+    # Rate limit OTP verification attempts — max 5 per email per 15 min
+    window_start = datetime.utcnow() - timedelta(minutes=15)
+    recent_failures = db.query(PasswordResetOTP).filter(
+        PasswordResetOTP.email == req.email,
+        PasswordResetOTP.used == False,
+        PasswordResetOTP.created_at >= window_start,
+    ).count()
+    if recent_failures > 5:
+        raise HTTPException(status_code=429, detail="Too many attempts. Please request a new code.")
+
     record = db.query(PasswordResetOTP).filter(
         PasswordResetOTP.email == req.email,
         PasswordResetOTP.otp == req.otp,
@@ -190,7 +200,6 @@ def reset_password(req: VerifyOTPRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Set password — works for both email users (reset) and Google users (first-time set)
     user.hashed_pw = hash_password(req.new_password)
     record.used = True
     db.commit()
