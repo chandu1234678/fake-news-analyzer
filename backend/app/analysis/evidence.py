@@ -1,8 +1,9 @@
 """
 News evidence fetching with:
-- Retry + exponential backoff on transient failures
-- Increased timeout (15s)
-- Reusable httpx session (connection pooling)
+- Brave Search API (primary, real-time) with NewsAPI fallback
+- Publisher bias weighting
+- Retry + exponential backoff
+- Cross-encoder reranking
 """
 import os
 import re
@@ -13,14 +14,16 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dotenv import load_dotenv
 from app.analysis.credibility import get_trust_score, get_trust_label
+from app.analysis.publisher_bias import get_bias_label, get_bias_weight
 
 _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
 load_dotenv(_env_path)
 
 logger = logging.getLogger(__name__)
 
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
-NEWS_API_URL = "https://newsapi.org/v2/everything"
+NEWS_API_KEY  = os.getenv("NEWS_API_KEY")
+BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
+NEWS_API_URL  = "https://newsapi.org/v2/everything"
 
 # ── Reusable session with retry ───────────────────────────────
 _retry_strategy = Retry(
@@ -76,8 +79,15 @@ def _stance(title: str, description: str) -> str:
 
 
 def _consistency_score(articles: list) -> float:
-    support    = sum(a.get("trust_score", 0.5) for a in articles if a.get("stance") == "support")
-    contradict = sum(a.get("trust_score", 0.5) for a in articles if a.get("stance") == "contradict")
+    """Trust + bias weighted consistency score."""
+    support    = sum(
+        a.get("trust_score", 0.5) * get_bias_weight(a.get("url", ""))
+        for a in articles if a.get("stance") == "support"
+    )
+    contradict = sum(
+        a.get("trust_score", 0.5) * get_bias_weight(a.get("url", ""))
+        for a in articles if a.get("stance") == "contradict"
+    )
     total = support + contradict
     if total == 0:
         return 0.5
@@ -85,6 +95,27 @@ def _consistency_score(articles: list) -> float:
 
 
 def fetch_evidence(text: str):
+    """
+    Primary entry point — tries Brave Search first, falls back to NewsAPI.
+    Returns: (evidence_score, urls, articles)
+    """
+    # Try Brave first (real-time)
+    if BRAVE_API_KEY:
+        try:
+            from app.analysis.brave_search import fetch_brave_evidence
+            score, urls, articles = fetch_brave_evidence(text)
+            if articles:
+                logger.debug("Evidence from Brave Search (%d articles)", len(articles))
+                return score, urls, articles
+        except Exception as e:
+            logger.warning("Brave Search failed, falling back to NewsAPI: %s", e)
+
+    # Fallback to NewsAPI
+    return _fetch_newsapi_evidence(text)
+
+
+
+def _fetch_newsapi_evidence(text: str):
     """
     Returns:
         evidence_score (float | None)
@@ -140,6 +171,7 @@ def fetch_evidence(text: str):
                     "stance":      stance,
                     "trust_score": trust,
                     "trust_label": get_trust_label(url),
+                    "bias_label":  get_bias_label(url),
                 })
 
         if not trusted_articles:
