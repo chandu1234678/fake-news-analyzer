@@ -25,10 +25,25 @@ def _load_roberta():
     global _roberta_pipe, _roberta_failed
     if _roberta_pipe is not None or _roberta_failed:
         return _roberta_pipe
+    # Skip RoBERTa on memory-constrained environments (< 1.5 GB available RAM)
+    # Render free tier has 512 MB — torch alone needs ~800 MB
+    try:
+        import psutil
+        available_mb = psutil.virtual_memory().available / (1024 * 1024)
+        if available_mb < 1500:
+            logger.warning(
+                "Skipping RoBERTa load — only %.0f MB RAM available (need 1500 MB). Using TF-IDF.",
+                available_mb,
+            )
+            _roberta_failed = True
+            return None
+    except ImportError:
+        pass  # psutil not installed — proceed anyway
+
     try:
         from transformers import pipeline
         import torch
-        device = 0 if torch.cuda.is_available() else -1  # GPU if available, else CPU
+        device = 0 if torch.cuda.is_available() else -1
         _roberta_pipe = pipeline(
             "text-classification",
             model=ROBERTA_MODEL,

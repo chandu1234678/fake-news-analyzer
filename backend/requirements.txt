@@ -6,6 +6,7 @@ pydantic[email]==2.10.6
 sqlalchemy
 alembic
 psycopg2-binary
+psutil
 requests
 pandas
 numpy
@@ -19,6 +20,6 @@ google-auth-oauthlib
 httpx
 groq
 cerebras-cloud-sdk
-# Transformer-based ML model (RoBERTa fake-news detector)
+# Transformer-based ML model (RoBERTa) — only used when RAM > 1.5 GB
 transformers>=4.40.0
 torch>=2.2.0

@@ -45,16 +45,15 @@ logging.getLogger("uvicorn.access").addFilter(_SuppressHealthLogs())
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
 
-    # ── Preload ML model at startup (avoids cold-start latency on first request) ─
+    # ── Load TF-IDF model only (fast, ~50ms) ──────────────────
+    # RoBERTa is NOT preloaded — it's 500MB and would time out Render's
+    # health check. It loads lazily on first request instead.
     try:
-        from app.analysis.ml import _load_roberta, _load_tfidf
-        import asyncio
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, _load_roberta)
-        await loop.run_in_executor(None, _load_tfidf)
-        logger.info("ML models preloaded")
+        from app.analysis.ml import _load_tfidf
+        _load_tfidf()
+        logger.info("TF-IDF model preloaded")
     except Exception as e:
-        logger.warning("ML model preload failed (will load on first request): %s", e)
+        logger.warning("TF-IDF preload failed: %s", e)
 
     # ── Train TF-IDF if no model file exists ──────────────────
     model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "model.joblib")
