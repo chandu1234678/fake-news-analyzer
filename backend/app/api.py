@@ -162,9 +162,21 @@ def message(
     # Manipulation analysis (fast, no API call)
     manip_score, manip_signals = analyze_manipulation(text)
 
+    # ── Wikidata entity verification (Level 90) ────────────────
+    entity_verifications = []
+    entity_risk = 0.0
+    try:
+        from app.analysis.wikidata import verify_entities, get_entity_risk_score
+        entity_verifications = verify_entities(primary_claim)
+        entity_risk = get_entity_risk_score(entity_verifications)
+    except Exception as e:
+        logger.debug("Wikidata verification skipped: %s", e)
+
     # ── Decision ───────────────────────────────────────────────
+    # Blend entity risk into ml_score — unverified entities push toward fake
+    adjusted_ml = min(1.0, ml_result["fake"] + entity_risk * 0.15)
     verdict, confidence = decide(
-        ml_fake=ml_result["fake"],
+        ml_fake=adjusted_ml,
         ai_fake=ai_score,
         evidence_score=evidence_score,
         text_len=len(primary_claim),
@@ -228,6 +240,8 @@ def message(
         "sub_claims": sub_claims if len(sub_claims) > 1 else None,
         "primary_claim": primary_claim if len(sub_claims) > 1 else None,
         "verdict_changed": verdict_changed,
+        "entity_verifications": entity_verifications if entity_verifications else None,
+        "entity_risk": entity_risk if entity_risk > 0 else None,
     }
 
     if session_id:

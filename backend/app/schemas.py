@@ -47,3 +47,5 @@ class MessageResponse(BaseModel):
     sub_claims: Optional[List[str]] = None
     primary_claim: Optional[str] = None
     verdict_changed: Optional[bool] = None
+    entity_verifications: Optional[List[dict]] = None
+    entity_risk: Optional[float] = None

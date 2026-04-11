@@ -145,6 +145,13 @@ def fetch_evidence(text: str):
         if not trusted_articles:
             return 0.1, all_urls[:3], []
 
+        # Cross-encoder reranking — semantically rerank by claim relevance
+        try:
+            from app.analysis.cross_encoder import rerank_articles
+            trusted_articles = rerank_articles(text, trusted_articles, top_k=5)
+        except Exception as e:
+            logger.debug("Cross-encoder reranking skipped: %s", e)
+
         score = _consistency_score(trusted_articles)
         coverage_bonus = min(len(trusted_articles) / 5, 0.15)
         score = round(min(1.0, score + coverage_bonus), 2)

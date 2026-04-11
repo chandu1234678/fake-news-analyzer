@@ -67,3 +67,40 @@
 - [x] C. Calibration curve API endpoint — /stats/calibration
 - [ ] D. UptimeRobot setup (manual — no code needed)
 - [x] E. Saved page — manipulation/highlight badges on saved cards
+Level 30 — Better training data (do this first)
+Your 27k samples after dedup means the 5 HF datasets were mostly duplicates of each other. You need diverse, hard data:
+
+Dataset	Why it's hard	Size
+FakeNewsNet	Real PolitiFact + GossipCop with social context	~23k
+LIAR-PLUS	12.8k with justifications, speaker history	12.8k
+MultiFC	36k claims from 26 fact-checking sites	36k
+COVID-19 Fake News	Domain-specific medical misinformation	10k
+WitchHunt / CREDBANK	Twitter rumors with credibility ratings	60k
+Level 50 — Fine-tune a real transformer (the actual jump)
+Your TF-IDF model is fundamentally limited — it has no understanding of context, sarcasm, or meaning. The jump from TF-IDF to a fine-tuned transformer is enormous.
+
+Target model: microsoft/deberta-v3-base — best accuracy/size tradeoff for this task, runs on Colab T4 in ~30 min.
+
+I can write a Colab notebook that:
+
+Pulls all the datasets above (~130k samples)
+Fine-tunes DeBERTa-v3-base for 3 epochs
+Saves as model.safetensors + uploads to your HuggingFace account
+Your backend loads it via pipeline() — drop-in replacement
+Expected result: 92-95% on hard real-world benchmarks vs your current ~70-75% on the same benchmarks.
+
+Level 70 — Ensemble + cross-encoder reranking
+After fine-tuning:
+
+Run DeBERTa + your LLMs in parallel
+Use a cross-encoder to rerank evidence articles by relevance to the specific claim
+Add claim decomposition — break complex claims into atomic facts, verify each separately
+Level 90 — Knowledge graph + temporal reasoning
+Connect to Wikidata API for entity verification
+Check if named entities (people, organizations, dates) are factually consistent
+Track claim evolution over time across sources
+Level 100 — What the research frontier looks like
+Multi-hop reasoning across evidence chains
+Multimodal (image + text consistency checking)
+Real-time web search grounding (not just NewsAPI)
+The single highest-impact thing you can do right now is Level 50 — fine-tune DeBERTa on diverse data. That alone takes you from level 10 to level 60+.
