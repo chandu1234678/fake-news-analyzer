@@ -76,8 +76,8 @@ def submit_feedback(
     return {"message": "Feedback recorded. Thank you."}
 
 
-def _run_pipeline_parallel(text: str, db=None):
-    """Run ML, AI, evidence, image check, and platform tracker in parallel."""
+def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
+    """Run ML, AI, evidence in parallel. Image/platform only if configured."""
     results = {
         "ml": None, "ai": (None, ""), "evidence": (None, [], []),
         "image": None, "platform": None,
@@ -86,29 +86,41 @@ def _run_pipeline_parallel(text: str, db=None):
     def do_ml():       return run_ml_analysis(text)
     def do_ai():       return run_ai_analysis(text)
     def do_evidence(): return fetch_evidence(text)
+
+    # Only run image check if an image was explicitly provided
     def do_image():
+        if not image_url:
+            return None
         try:
             from app.analysis.image_check import check_image_consistency
-            # Use provided image_url if given, otherwise extract from text
-            img_text = req.image_url or text
-            return check_image_consistency(text, article_text=img_text)
+            return check_image_consistency(text, article_text=image_url)
         except Exception:
             return None
+
+    # Only run platform tracker if Google Fact Check API key is set
     def do_platform():
+        import os
+        if not os.getenv("GOOGLE_FACTCHECK_API_KEY"):
+            return None
         try:
             from app.analysis.platform_tracker import get_spread_indicators
             return get_spread_indicators(text, db)
         except Exception:
             return None
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    # Cap at 3 workers to stay within 512MB RAM on Render free tier
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
             executor.submit(do_ml):       "ml",
             executor.submit(do_ai):       "ai",
             executor.submit(do_evidence): "evidence",
-            executor.submit(do_image):    "image",
-            executor.submit(do_platform): "platform",
         }
+        # Only add image/platform if needed (avoids spawning extra threads)
+        if image_url:
+            futures[executor.submit(do_image)] = "image"
+        if results.get("platform") is None:
+            futures[executor.submit(do_platform)] = "platform"
+
         for future in as_completed(futures):
             key = futures[future]
             try:
@@ -181,8 +193,8 @@ def message(
     sub_claims = extract_claims(text)
     primary_claim = sub_claims[0]
 
-    # ── Run all five in parallel ───────────────────────────────
-    pipeline = _run_pipeline_parallel(primary_claim, db)
+    # ── Run core pipeline (3 workers max for 512MB RAM) ───────
+    pipeline = _run_pipeline_parallel(primary_claim, image_url=req.image_url, db=db)
 
     ml_result = pipeline["ml"] or {"fake": 0.5}
     raw_ai_score, explanation = pipeline["ai"] if pipeline["ai"] else (None, "")
@@ -195,15 +207,18 @@ def message(
     # Manipulation analysis (fast, no API call)
     manip_score, manip_signals = analyze_manipulation(text)
 
-    # ── Wikidata entity verification (Level 90) ────────────────
+    # ── Wikidata entity verification (only if enabled) ────────
+    # Disabled by default on free tier — set WIKIDATA_ENABLED=true to enable
     entity_verifications = []
     entity_risk = 0.0
-    try:
-        from app.analysis.wikidata import verify_entities, get_entity_risk_score
-        entity_verifications = verify_entities(primary_claim)
-        entity_risk = get_entity_risk_score(entity_verifications)
-    except Exception as e:
-        logger.debug("Wikidata verification skipped: %s", e)
+    import os
+    if os.getenv("WIKIDATA_ENABLED", "false").lower() == "true":
+        try:
+            from app.analysis.wikidata import verify_entities, get_entity_risk_score
+            entity_verifications = verify_entities(primary_claim)
+            entity_risk = get_entity_risk_score(entity_verifications)
+        except Exception as e:
+            logger.debug("Wikidata verification skipped: %s", e)
 
     # ── Decision ───────────────────────────────────────────────
     # Blend entity risk + image mismatch into ml_score
