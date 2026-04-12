@@ -231,3 +231,5 @@ Each commit represents actual work done on the project.
 ## 2026-04-02 11:42 - Implement Phase 4.1: SHAP Explainability - Add SHAP-based token importance, attention extraction, enhanced highlighting, and /explain endpoint
 
 ## 2026-04-08 11:33 - feat: Complete Phase 4.1 - SHAP Explainability UI Visualization
+
+## 2026-04-12 22:26 - feat: Complete Phase 4.2 - Review Queue UI for Active Learning
