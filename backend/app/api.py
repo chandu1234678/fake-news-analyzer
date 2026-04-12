@@ -109,6 +109,7 @@ def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
             return None
 
     # Cap at 3 workers to stay within 512MB RAM on Render free tier
+    # image/platform only run when explicitly needed
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
             executor.submit(do_ml):       "ml",
