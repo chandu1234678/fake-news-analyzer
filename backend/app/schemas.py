@@ -23,6 +23,7 @@ class MessageRequest(BaseModel):
     @classmethod
     def sanitize_message(cls, v):
         v = _sanitize(v)
+        # Allow short messages when used with image attachment
         if not v:
             raise ValueError("Message cannot be empty")
         return v

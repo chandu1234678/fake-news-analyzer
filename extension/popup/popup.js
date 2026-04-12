@@ -796,12 +796,18 @@ async function send() {
   // Capture and clear attachments before async
   const imageUrl = attachedImageUrl;
   _clearAttach();
+
+  // If image attached with no/short message, use a descriptive prompt
+  let sendText = text;
+  if (imageUrl && text.length < 10) {
+    sendText = text.length > 0 ? text : "What does this image show? Is there any misinformation or fake news in it?";
+  }
   addUserMsg(text, true, imageUrl);
   const typing = addTyping();
   sendBtn.disabled = true;
 
   try {
-    const body = { message: text, session_id: currentSessionId, history };
+    const body = { message: sendText, session_id: currentSessionId, history };
     if (imageUrl) body.image_url = imageUrl;
     const res  = await authFetch("/message", { method: "POST", body: JSON.stringify(body) });
     if (!res.ok) throw new Error(`Server error ${res.status}`);
