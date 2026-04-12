@@ -770,6 +770,18 @@ document.getElementById("file-pdf").addEventListener("change", async e => {
 document.getElementById("file-txt").addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
+
+  // DOCX/DOC are binary ZIP files — can't read as text
+  if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+    attachedFileText = `Document: ${file.name}`;
+    attachedFileName = file.name;
+    inputText.value  = `Summarize and fact-check this document: ${file.name}`;
+    autoResize();
+    _showPreview("description", `${file.name} (name only — open file to copy text)`);
+    inputText.focus();
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = ev => {
     const text = ev.target.result.slice(0, 3000);
@@ -780,12 +792,12 @@ document.getElementById("file-txt").addEventListener("change", e => {
     _showPreview("description", file.name);
     inputText.focus();
   };
-  // Try reading as text — works for .txt, .md, .csv, and some .doc
   reader.readAsText(file);
 });
 async function send() {
   const text = inputText.value.trim();
-  if (!text) return;
+  // Allow send if there's an image attached even with no text
+  if (!text && !attachedImageUrl) return;
   inputText.value = "";
   autoResize();
 
@@ -802,6 +814,8 @@ async function send() {
   if (imageUrl && text.length < 10) {
     sendText = text.length > 0 ? text : "What does this image show? Is there any misinformation or fake news in it?";
   }
+  // Ensure sendText is never empty (backend requires non-empty message)
+  if (!sendText) sendText = "Analyze this content";
   addUserMsg(text, true, imageUrl);
   const typing = addTyping();
   sendBtn.disabled = true;
