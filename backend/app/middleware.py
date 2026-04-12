@@ -33,7 +33,7 @@ _LIMITS = {
 _DEFAULT_LIMIT = (60, 60)
 
 _store: dict = defaultdict(list)
-MAX_BODY_BYTES = 512 * 1024  # 512 KB — allows base64 image attachments
+MAX_BODY_BYTES = 2 * 1024 * 1024  # 2 MB — allows compressed image base64
 
 # Security headers applied to every response
 _SECURITY_HEADERS = {

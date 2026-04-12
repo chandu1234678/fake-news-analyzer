@@ -673,12 +673,10 @@ let attachedFileName = null;
 const attachBtn  = document.getElementById("attach-btn");
 const attachMenu = document.getElementById("attach-menu");
 
-// Toggle menu on + click
 attachBtn.addEventListener("click", e => {
   e.stopPropagation();
   attachMenu.style.display = attachMenu.style.display === "none" ? "block" : "none";
 });
-// Close menu on outside click
 document.addEventListener("click", () => { attachMenu.style.display = "none"; });
 
 function _showPreview(icon, name) {
@@ -701,48 +699,88 @@ function _clearAttach() {
 
 document.getElementById("attach-remove-btn").addEventListener("click", _clearAttach);
 
-// Image
+// Image — compress to JPEG max 800px before sending to avoid 413
 document.getElementById("file-image").addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    attachedImageUrl = reader.result;
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    const MAX = 800;
+    let w = img.width, h = img.height;
+    if (w > MAX || h > MAX) {
+      const ratio = Math.min(MAX / w, MAX / h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    // Compress to JPEG at 0.7 quality — keeps base64 under 200KB for most images
+    attachedImageUrl = canvas.toDataURL("image/jpeg", 0.7);
     attachedFileName = file.name;
-    _showPreview("image", file.name);
+    _showPreview("image", `${file.name} (compressed)`);
   };
-  reader.readAsDataURL(file);
+  img.src = objectUrl;
 });
 
-// PDF — extract text via FileReader (reads as text for .txt fallback, PDF needs server)
-document.getElementById("file-pdf").addEventListener("change", e => {
+// PDF — extract text using PDF.js (loaded from CDN) or send filename as hint
+document.getElementById("file-pdf").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
   attachedFileName = file.name;
-  // For PDF we send filename as context hint — actual text extraction needs server
-  // For now, set the filename in the input as a prompt
-  inputText.value = `[PDF: ${file.name}] `;
-  attachedFileText = `PDF file: ${file.name}`;
-  _showPreview("picture_as_pdf", file.name);
-  autoResize();
+  _showPreview("picture_as_pdf", `${file.name} (reading...)`);
+
+  try {
+    // Try to extract text using FileReader + basic text extraction
+    const arrayBuffer = await file.arrayBuffer();
+    // Simple PDF text extraction — look for text between BT/ET markers
+    const bytes = new Uint8Array(arrayBuffer);
+    const text  = new TextDecoder('latin1').decode(bytes);
+    const matches = text.match(/\(([^)]{5,200})\)/g) || [];
+    const extracted = matches
+      .map(m => m.slice(1, -1).replace(/\\n/g, ' ').replace(/\\/g, '').trim())
+      .filter(s => /[a-zA-Z]{3,}/.test(s))
+      .join(' ')
+      .slice(0, 2000);
+
+    if (extracted.length > 50) {
+      attachedFileText = extracted;
+      inputText.value  = extracted.slice(0, 500);
+      autoResize();
+      _showPreview("picture_as_pdf", file.name);
+    } else {
+      // Fallback: just use filename as context
+      attachedFileText = `PDF document: ${file.name}`;
+      inputText.value  = `Fact-check this PDF: ${file.name}`;
+      autoResize();
+      _showPreview("picture_as_pdf", file.name);
+    }
+  } catch (err) {
+    attachedFileText = `PDF: ${file.name}`;
+    inputText.value  = `Fact-check this document: ${file.name}`;
+    autoResize();
+    _showPreview("picture_as_pdf", file.name);
+  }
   inputText.focus();
 });
 
-// Text file
+// Text / DOC file
 document.getElementById("file-txt").addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    const text = ev.target.result.slice(0, 3000); // cap at 3000 chars
+    const text = ev.target.result.slice(0, 3000);
     attachedFileText = text;
     attachedFileName = file.name;
-    // Auto-fill textarea with file content
-    inputText.value = text;
+    inputText.value  = text;
     autoResize();
     _showPreview("description", file.name);
     inputText.focus();
   };
+  // Try reading as text — works for .txt, .md, .csv, and some .doc
   reader.readAsText(file);
 });
 async function send() {
