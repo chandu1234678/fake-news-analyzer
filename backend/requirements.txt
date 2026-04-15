@@ -21,6 +21,7 @@ google-auth-oauthlib
 httpx
 groq
 cerebras-cloud-sdk
+pytest
 # Transformer-based ML model (RoBERTa) — only used when RAM > 1.5 GB
 transformers>=4.40.0
 torch>=2.2.0

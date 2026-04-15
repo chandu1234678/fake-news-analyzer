@@ -216,6 +216,24 @@ body {
 .manip-high { background: rgba(252,165,165,0.08); color: var(--fake); }
 .manip-med  { background: rgba(252,211,77,0.07);  color: var(--warn); }
 
+/* ── Moderation summary ── */
+.mod-summary {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--b1);
+  background: rgba(255,255,255,0.02);
+}
+.mod-row { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.mod-label { color: var(--t2); font-weight: 600; letter-spacing: 0.02em; }
+.mod-risk { margin-left: auto; font-weight: 700; color: var(--t1); }
+.mod-risk-bar { height: 4px; background: var(--b1); border-radius: 3px; overflow: hidden; }
+.mod-risk-fill { height: 100%; background: var(--warn); border-radius: 3px; }
+.mod-flags { font-size: 10px; color: var(--t3); line-height: 1.4; }
+.mod-review { border-color: rgba(252,165,165,0.18); }
+.mod-review .mod-risk-fill { background: var(--fake); }
+.mod-allow { border-color: rgba(110,231,183,0.2); }
+.mod-allow .mod-risk-fill { background: var(--real); }
+
 /* ── Stance / Contradiction meter ── */
 .stance-meter {
   padding-top: 7px; border-top: 1px solid var(--b1);

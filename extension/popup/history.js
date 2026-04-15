@@ -28,14 +28,14 @@ async function load() {
   const list = document.getElementById("sessions-list");
   list.innerHTML = `<div style="font-size:12px;color:var(--t3);text-align:center;padding:32px 0">Loading...</div>`;
   try {
-    const res = await fetch(`${API}/history/sessions`, {
-      headers: { Authorization: `Bearer ${token}` }
+    const res = await apiFetch("/history/sessions", {
+      headers: buildHeaders({ Authorization: `Bearer ${token}` })
     });
     if (!res.ok) {
       if (res.status === 401) { nav("login.html"); return; }
       throw new Error(`Server error ${res.status}`);
     }
-    const data = await res.json();
+    const data = await readJsonSafe(res) || {};
     sessions = Array.isArray(data) ? data : (data.sessions || []);
     render();
   } catch(e) {
@@ -89,9 +89,9 @@ function openSession(id) {
 
 async function deleteSession(id) {
   try {
-    const res = await fetch(`${API}/history/sessions/${id}`, {
+    const res = await apiFetch(`/history/sessions/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: buildHeaders({ Authorization: `Bearer ${token}` })
     });
     if (res.status === 401) { nav("login.html"); return; }
     sessions = sessions.filter(s => s.id !== id);
@@ -102,9 +102,9 @@ async function deleteSession(id) {
 async function clearAll() {
   if (!confirm("Delete all chat history?")) return;
   await Promise.allSettled(sessions.map(s =>
-    fetch(`${API}/history/sessions/${s.id}`, {
+    apiFetch(`/history/sessions/${s.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: buildHeaders({ Authorization: `Bearer ${token}` })
     })
   ));
   sessions = [];

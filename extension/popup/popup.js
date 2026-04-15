@@ -103,7 +103,7 @@ async function loadSessions() {
   try {
     const res = await authFetch("/history/sessions");
     if (!res.ok) return;
-    const data = await res.json();
+    const data = await readJsonSafe(res) || {};
     // Handle both paginated {sessions, total} and legacy array response
     sessions = Array.isArray(data) ? data : (data.sessions || []);
     renderSessions();
@@ -165,7 +165,7 @@ async function loadSessionMessages(sessionId) {
   try {
     const res = await authFetch(`/history/sessions/${sessionId}/messages`);
     if (!res.ok) { showWelcome(); return; }
-    const msgs = await res.json();
+    const msgs = await readJsonSafe(res) || [];
     if (!msgs.length) { showWelcome(); return; }
     chatContainer.innerHTML = "";
     history = [];
@@ -262,7 +262,13 @@ async function analyzeCurrentPage() {
   }
 }
 
-const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const escapeHtml = s => String(s)
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+const esc = escapeHtml;
 const scrollBottom = () => { chatContainer.scrollTop = chatContainer.scrollHeight; };
 
 // ── Source credibility ────────────────────────────────────────
@@ -294,7 +300,7 @@ function addUserMsg(text, scroll = true, imageUrl = null) {
     el.appendChild(img);
   }
   const textNode = document.createElement("span");
-  textNode.textContent = text;
+  textNode.textContent = text || (imageUrl ? "Image attached" : "");
   el.appendChild(textNode);
   chatContainer.appendChild(el);
   if (scroll) scrollBottom();
@@ -363,7 +369,8 @@ function addChatReply(text, scroll = true, animate = true) {
 }
 
 function renderMarkdown(text) {
-  return text
+  const safe = escapeHtml(text || "");
+  return safe
     // Bold **text**
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     // Italic *text*
@@ -376,6 +383,27 @@ function renderMarkdown(text) {
     .replace(/(<li[^>]*>.*<\/li>\n?)+/g, m => `<ul style="margin:6px 0;padding:0">${m}</ul>`)
     // Line breaks
     .replace(/\n/g, "<br>");
+}
+
+function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeMessageResponse(data) {
+  const normalized = data && typeof data === "object" ? { ...data } : {};
+  normalized.evidence_articles = ensureArray(normalized.evidence_articles);
+  normalized.evidence = ensureArray(normalized.evidence);
+  normalized.highlights = ensureArray(normalized.highlights);
+  normalized.manipulation_signals = ensureArray(normalized.manipulation_signals);
+  normalized.sub_claims = ensureArray(normalized.sub_claims);
+  if (!normalized.stance_summary || typeof normalized.stance_summary !== "object") {
+    normalized.stance_summary = { support: 0, contradict: 0, neutral: 0 };
+  }
+  return normalized;
+}
+
+function feedbackClaimText(data) {
+  return data.primary_claim || data.content || data.explanation || "";
 }
 
 function addFactCard(data, scroll = true, animate = true) {
@@ -396,12 +424,14 @@ function addFactCard(data, scroll = true, animate = true) {
   const mlFill    = mlPct > 50 ? "fill-fake" : "fill-real";
   const newsFill  = newsPct > 50 ? "fill-real" : "fill-fake";
 
-  const hasArticles = data.evidence_articles && data.evidence_articles.length;
-  const hasUrls     = data.evidence && data.evidence.length;
+  const evidenceArticles = ensureArray(data.evidence_articles);
+  const evidenceUrls = ensureArray(data.evidence);
+  const hasArticles = evidenceArticles.length;
+  const hasUrls     = evidenceUrls.length;
 
   let srcHtml = "";
   if (hasArticles) {
-    srcHtml = data.evidence_articles.slice(0, 4).map(a => {
+    srcHtml = evidenceArticles.slice(0, 4).map(a => {
       const cred = getCredTag(a.url || "");
       return `<a href="${esc(a.url)}" target="_blank">
         <div class="src-name-row">
@@ -412,7 +442,7 @@ function addFactCard(data, scroll = true, animate = true) {
       </a>`;
     }).join("");
   } else if (hasUrls) {
-    srcHtml = data.evidence.slice(0, 4).map(s => {
+    srcHtml = evidenceUrls.slice(0, 4).map(s => {
       const cred = getCredTag(s);
       let domain = s;
       try { domain = new URL(s).hostname.replace(/^www\./, ""); } catch {}
@@ -517,6 +547,26 @@ function addFactCard(data, scroll = true, animate = true) {
         ${srcHtml}
       </div>` : "";
 
+  const moderation = data.moderation_summary || null;
+  let moderationHtml = "";
+  if (moderation) {
+    const riskPct = Math.round((moderation.risk || 0) * 100);
+    const rec = (moderation.recommendation || "allow").toLowerCase();
+    const recLabel = rec === "review" ? "REVIEW" : "ALLOW";
+    const recCls = rec === "review" ? "mod-review" : "mod-allow";
+    const flags = ensureArray(moderation.flags).slice(0, 3).join(" · ");
+    moderationHtml = `
+      <div class="mod-summary ${recCls}">
+        <div class="mod-row">
+          <span class="material-symbols-outlined ms-12">policy</span>
+          <span class="mod-label">Moderation: ${recLabel}</span>
+          <span class="mod-risk">${riskPct}%</span>
+        </div>
+        <div class="mod-risk-bar"><div class="mod-risk-fill" style="width:${riskPct}%"></div></div>
+        ${flags ? `<div class="mod-flags">${esc(flags)}</div>` : ""}
+      </div>`;
+  }
+
   const row = document.createElement("div");
   row.className = "bot-row";
 
@@ -562,6 +612,7 @@ function addFactCard(data, scroll = true, animate = true) {
         <div class="score-track"><div class="score-fill ${newsFill} news-bar"></div></div>
         <span class="score-num">${newsPct}%</span>
       </div>
+      ${moderationHtml}
       ${manipHtml}
       ${subClaimsHtml}
       ${highlightHtml}
@@ -656,7 +707,7 @@ async function submitFeedback(card, data, actual) {
     await authFetch("/feedback", {
       method: "POST",
       body: JSON.stringify({
-        claim_text: data.explanation || "",
+        claim_text: feedbackClaimText(data),
         predicted:  data.verdict || "uncertain",
         actual,
         confidence: data.confidence || null,
@@ -717,8 +768,8 @@ document.getElementById("file-image").addEventListener("change", e => {
     const canvas = document.createElement("canvas");
     canvas.width = w; canvas.height = h;
     canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-    // Compress to JPEG at 0.7 quality — keeps base64 under 200KB for most images
-    attachedImageUrl = canvas.toDataURL("image/jpeg", 0.7);
+    // Compress to JPEG at 0.6 quality — keeps base64 under 300KB for most images
+    attachedImageUrl = canvas.toDataURL("image/jpeg", 0.6);
     attachedFileName = file.name;
     _showPreview("image", `${file.name} (compressed)`);
   };
@@ -824,8 +875,16 @@ async function send() {
     const body = { message: sendText, session_id: currentSessionId, history };
     if (imageUrl) body.image_url = imageUrl;
     const res  = await authFetch("/message", { method: "POST", body: JSON.stringify(body) });
-    if (!res.ok) throw new Error(`Server error ${res.status}`);
-    const data = await res.json();
+    const data = await readJsonSafe(res);
+    if (!res.ok) {
+      let detail = `Server error ${res.status}`;
+      if (data) {
+        if (typeof data.detail === "string") detail = data.detail;
+        else if (Array.isArray(data.detail)) detail = data.detail.map(e => e.msg || JSON.stringify(e)).join("; ");
+        else if (typeof data.message === "string") detail = data.message;
+      }
+      throw new Error(detail);
+    }
     typing.remove();
 
     if (data.session_id && data.session_id !== currentSessionId) {
@@ -834,12 +893,13 @@ async function send() {
       await loadSessions();
     }
 
-    if (data.is_claim) {
-      addFactCard(data);
+    const normalized = normalizeMessageResponse(data || {});
+    if (normalized.is_claim) {
+      addFactCard(normalized);
     } else {
-      addChatReply(data.reply);
+      addChatReply(normalized.reply || "");
       history.push({ role: "user", content: text });
-      history.push({ role: "assistant", content: data.reply });
+      history.push({ role: "assistant", content: normalized.reply || "" });
       if (history.length > 20) history = history.slice(-20);
     }
 
@@ -857,13 +917,13 @@ async function send() {
 
 // ── Helpers ───────────────────────────────────────────────────
 async function authFetch(path, opts = {}) {
-  const res = await fetch(`${API}${path}`, {
+  const res = await apiFetch(path, {
     ...opts,
-    headers: {
+    headers: buildHeaders({
       "Content-Type": "application/json",
       ...(token ? { "Authorization": `Bearer ${token}` } : {}),
       ...(opts.headers || {}),
-    }
+    })
   });
   if (res.status === 401) {
     chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });

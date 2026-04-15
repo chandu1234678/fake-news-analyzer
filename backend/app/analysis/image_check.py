@@ -1,176 +1,204 @@
 """
 Image + Text Consistency Checker
 
-60% of viral misinformation uses real images with false captions.
-This module:
-1. Extracts image URLs from article content
-2. Uses Google Reverse Image Search (via SerpAPI) or Gemini Vision
-   to check if the image matches the claimed context
-3. Returns a consistency score and any mismatches found
+Analyzes images sent with claims using Gemini Vision.
+Accepts base64 data URIs (from extension file upload) and http URLs.
 
-No API key needed for basic URL extraction.
-SerpAPI key (SERPAPI_KEY) enables reverse image search.
-Gemini key enables vision-based caption consistency check.
+Returns a description of the image and whether it's consistent with the claim.
 """
 import os
 import re
+import base64
 import logging
 import requests
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-SERPAPI_KEY = os.getenv("SERPAPI_KEY")
-GEMINI_KEY  = os.getenv("GEMINI_API_KEY")
+def _get_gemini_key():
+    return os.getenv("GEMINI_API_KEY")
 
-# Regex to extract image URLs from HTML/text
-_IMG_URL_RE = re.compile(
-    r'https?://[^\s"\'<>]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s"\'<>]*)?',
-    re.IGNORECASE,
-)
+GEMINI_VISION_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_VISION_FALLBACK_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
+
+# Simple rate limiter — track last vision call time to avoid 429
+import threading
+_last_vision_call = 0.0
+_vision_lock = threading.Lock()
+
+def _wait_for_rate_limit():
+    """Ensure at least 4 seconds between vision API calls (free tier: 15 RPM)."""
+    import time
+    global _last_vision_call
+    with _vision_lock:
+        now = time.time()
+        elapsed = now - _last_vision_call
+        if elapsed < 4.0:
+            time.sleep(4.0 - elapsed)
+        _last_vision_call = time.time()
 
 _session = requests.Session()
 _session.headers.update({"User-Agent": "FactCheckerAI/2.0"})
 
-
-def extract_image_urls(text: str) -> list:
-    """Extract image URLs from text/HTML content."""
-    return list(set(_IMG_URL_RE.findall(text)))[:5]
-
-
-def _reverse_image_search(image_url: str) -> dict:
-    """
-    Use SerpAPI Google Reverse Image Search to find where an image appears.
-    Returns dict with original_context and mismatch_risk.
-    """
-    if not SERPAPI_KEY:
-        return {"available": False}
-    try:
-        r = _session.get(
-            "https://serpapi.com/search",
-            params={
-                "engine":    "google_reverse_image",
-                "image_url": image_url,
-                "api_key":   SERPAPI_KEY,
-            },
-            timeout=10,
-        )
-        if r.status_code != 200:
-            return {"available": False}
-
-        data = r.json()
-        image_results = data.get("image_results", [])
-        knowledge_graph = data.get("knowledge_graph", {})
-
-        # Extract contexts where this image has appeared
-        contexts = []
-        for result in image_results[:5]:
-            contexts.append({
-                "title":  result.get("title", ""),
-                "source": result.get("source", {}).get("name", ""),
-                "date":   result.get("date", ""),
-            })
-
-        return {
-            "available":    True,
-            "image_url":    image_url,
-            "contexts":     contexts,
-            "entity":       knowledge_graph.get("title", ""),
-            "total_results": data.get("search_information", {}).get("total_results", 0),
-        }
-    except Exception as e:
-        logger.debug("Reverse image search failed: %s", e)
-        return {"available": False}
+_DATA_URI_RE = re.compile(r'^data:(image/[^;]+);base64,(.+)$', re.DOTALL)
+_IMG_URL_RE  = re.compile(
+    r'https?://[^\s"\'<>]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s"\'<>]*)?',
+    re.IGNORECASE,
+)
 
 
-def _gemini_vision_check(image_url: str, claim_text: str) -> dict:
-    """
-    Use Gemini Vision to check if image content matches the claim.
-    Returns consistency score and explanation.
-    """
+def _gemini_vision_base64(mime_type: str, b64_data: str, prompt: str) -> dict:
+    """Call Gemini Vision with inline base64 image data, with retry on 429."""
+    GEMINI_KEY = _get_gemini_key()
     if not GEMINI_KEY:
-        return {"available": False}
+        return {"available": False, "reason": "No Gemini API key"}
+
+    import time
+    _wait_for_rate_limit()
+    url = GEMINI_VISION_URL
+    for attempt in range(3):
+        try:
+            r = _session.post(
+                f"{url}?key={GEMINI_KEY}",
+                json={
+                    "contents": [{
+                        "parts": [
+                            {"text": prompt},
+                            {"inline_data": {"mime_type": mime_type, "data": b64_data}},
+                        ]
+                    }],
+                    "generationConfig": {"temperature": 0, "maxOutputTokens": 300},
+                },
+                timeout=20,
+            )
+            if r.status_code == 429:
+                wait = 2 ** attempt
+                logger.warning("Gemini Vision 429 rate limit, retrying in %ss (attempt %d/3)", wait, attempt + 1)
+                time.sleep(wait)
+                if attempt >= 1:
+                    url = GEMINI_VISION_FALLBACK_URL
+                continue
+            if r.status_code != 200:
+                logger.warning("Gemini Vision returned %s: %s", r.status_code, r.text[:300])
+                return {"available": False, "reason": f"HTTP {r.status_code}: {r.text[:100]}"}
+
+            text = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            logger.info("Gemini Vision success, description length=%d", len(text))
+            return {"available": True, "description": text}
+        except Exception as e:
+            logger.warning("Gemini Vision failed (attempt %d): %s", attempt + 1, e)
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+
+    return {"available": False, "reason": "Gemini Vision rate limited after 3 attempts"}
+
+
+def _gemini_vision_url(image_url: str, prompt: str) -> dict:
+    """Call Gemini Vision with a public image URL."""
+    GEMINI_KEY = _get_gemini_key()
+    if not GEMINI_KEY:
+        return {"available": False, "reason": "No Gemini API key"}
     try:
-        import json
-        GEMINI_VISION_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-        prompt = (
-            f"Look at this image and the following claim. "
-            f"Does the image support, contradict, or is it unrelated to the claim?\n\n"
-            f"Claim: {claim_text[:300]}\n\n"
-            f"Respond with ONLY JSON: "
-            f'{{\"consistency\": \"support\"|\"contradict\"|\"unrelated\", '
-            f'\"confidence\": <0.0-1.0>, \"reason\": \"<20 words max>\"}}'
-        )
         r = _session.post(
             f"{GEMINI_VISION_URL}?key={GEMINI_KEY}",
             json={
                 "contents": [{
                     "parts": [
                         {"text": prompt},
-                        {"inline_data": None,
-                         "file_data": {"mime_type": "image/jpeg", "file_uri": image_url}},
+                        {"file_data": {"mime_type": "image/jpeg", "file_uri": image_url}},
                     ]
                 }],
-                "generationConfig": {"temperature": 0, "maxOutputTokens": 100},
+                "generationConfig": {"temperature": 0, "maxOutputTokens": 300},
             },
-            timeout=12,
+            timeout=15,
         )
         if r.status_code != 200:
-            return {"available": False}
-
-        raw = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-        raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`")
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if match:
-            data = json.loads(match.group())
-            return {
-                "available":    True,
-                "image_url":    image_url,
-                "consistency":  data.get("consistency", "unrelated"),
-                "confidence":   float(data.get("confidence", 0.5)),
-                "reason":       data.get("reason", ""),
-            }
+            logger.warning("Gemini Vision URL returned %s: %s", r.status_code, r.text[:300])
+            return {"available": False, "reason": f"HTTP {r.status_code}"}
+        text = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return {"available": True, "description": text}
     except Exception as e:
-        logger.debug("Gemini vision check failed: %s", e)
-    return {"available": False}
+        logger.warning("Gemini Vision URL failed: %s", e)
+        return {"available": False, "reason": str(e)}
 
 
-def check_image_consistency(claim_text: str, article_text: str = "") -> dict:
+def check_image_consistency(claim_text: str, image_source: str = "") -> dict:
     """
-    Main entry point. Checks image consistency with the claim.
-    Accepts both http URLs and base64 data URIs (from file upload).
+    Analyze an image for consistency with a claim.
+
+    image_source can be:
+    - A base64 data URI: data:image/jpeg;base64,...
+    - An http/https image URL
+    - Plain text (no image analysis performed)
+
+    Returns:
+        {
+          "images_found": int,
+          "description": str,
+          "consistency": "support"|"contradict"|"neutral",
+          "mismatch_risk": float 0-1,
+          "flag": str | None
+        }
     """
-    combined = f"{claim_text} {article_text}"
+    image_source = image_source or ""
+    logger.info("check_image_consistency: source_len=%d, starts_with=%s",
+                len(image_source), image_source[:30] if image_source else "EMPTY")
 
-    # Check for base64 data URI first (from extension file upload)
-    data_uri_match = re.match(r'^data:image/[^;]+;base64,', article_text or "")
-    if data_uri_match:
-        image_urls = [article_text]  # treat the data URI as the image
-    else:
-        image_urls = extract_image_urls(combined)
+    # Check for base64 data URI
+    data_match = _DATA_URI_RE.match(image_source)
+    if data_match:
+        mime_type = data_match.group(1)
+        b64_data  = data_match.group(2)
 
-    if not image_urls:
-        return {"images_found": 0, "checks": [], "mismatch_risk": 0.0, "flag": None}
+        prompt = (
+            f"Describe what you see in this image in 2-3 sentences. "
+            f"Then assess: does the image support, contradict, or is it unrelated to this claim?\n\n"
+            f"Claim: {claim_text[:300]}\n\n"
+            f"Format your response as:\n"
+            f"Description: [what you see]\n"
+            f"Assessment: support | contradict | unrelated\n"
+            f"Reason: [one sentence]"
+        )
 
-    checks = []
-    mismatch_signals = 0
-
-    for url in image_urls[:2]:
-        result = _gemini_vision_check(url, claim_text)
-        if not result.get("available"):
-            result = _reverse_image_search(url)
-
+        result = _gemini_vision_base64(mime_type, b64_data, prompt)
         if result.get("available"):
-            checks.append(result)
-            if result.get("consistency") == "contradict":
-                mismatch_signals += 1
+            desc = result["description"]
+            consistency = "neutral"
+            if "contradict" in desc.lower():
+                consistency = "contradict"
+            elif "support" in desc.lower():
+                consistency = "support"
 
-    mismatch_risk = round(mismatch_signals / max(len(checks), 1), 2) if checks else 0.0
-    flag = "image_mismatch" if mismatch_risk > 0.5 else None
+            mismatch_risk = 0.7 if consistency == "contradict" else 0.0
+            return {
+                "images_found":  1,
+                "description":   desc,
+                "consistency":   consistency,
+                "mismatch_risk": mismatch_risk,
+                "flag":          "image_mismatch" if mismatch_risk > 0.5 else None,
+            }
+        else:
+            logger.warning("Gemini Vision unavailable: %s", result.get("reason"))
+            return {
+                "images_found":  1,
+                "description":   "Image received but vision analysis unavailable",
+                "consistency":   "neutral",
+                "mismatch_risk": 0.0,
+                "flag":          None,
+            }
 
-    return {
-        "images_found": len(image_urls),
-        "checks":       checks,
-        "mismatch_risk": mismatch_risk,
-        "flag":         flag,
-    }
+    # Check for http URL
+    url_match = _IMG_URL_RE.search(image_source)
+    if url_match:
+        url    = url_match.group(0)
+        prompt = f"Describe this image briefly. Does it support or contradict: {claim_text[:200]}"
+        result = _gemini_vision_url(url, prompt)
+        if result.get("available"):
+            return {
+                "images_found":  1,
+                "description":   result["description"],
+                "consistency":   "neutral",
+                "mismatch_risk": 0.0,
+                "flag":          None,
+            }
+
+    return {"images_found": 0, "checks": [], "mismatch_risk": 0.0, "flag": None}

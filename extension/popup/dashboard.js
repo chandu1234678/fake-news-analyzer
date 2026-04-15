@@ -34,13 +34,14 @@ chrome.storage.local.get(["token", "user"], async d => {
 async function loadSessions() {
   const list = document.getElementById("recent-list");
   try {
-    const res = await fetch(`${API}/history/sessions`, {
-      headers: { Authorization: `Bearer ${token}` }
+    const res = await apiFetch("/history/sessions", {
+      headers: buildHeaders({ Authorization: `Bearer ${token}` })
     });
     if (res.status === 401) { navLogin(); return; }
     if (!res.ok) throw new Error(`${res.status}`);
 
-    const sessions = await res.json();
+    const payload = await readJsonSafe(res) || {};
+    const sessions = Array.isArray(payload) ? payload : (payload.sessions || []);
     document.getElementById("stat-total").textContent = sessions.length || 0;
 
     const recent = sessions.slice(0, 5);
@@ -65,11 +66,11 @@ async function loadSessions() {
     // Count real/fake from last 5 sessions
     let real = 0, fake = 0;
     await Promise.allSettled(sessions.slice(0, 5).map(async s => {
-      const mr = await fetch(`${API}/history/sessions/${s.id}/messages`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const mr = await apiFetch(`/history/sessions/${s.id}/messages`, {
+        headers: buildHeaders({ Authorization: `Bearer ${token}` })
       });
       if (!mr.ok) return;
-      const msgs = await mr.json();
+      const msgs = await readJsonSafe(mr) || [];
       msgs.forEach(m => {
         if (m.is_claim) {
           if (m.verdict === "real") real++;
@@ -96,11 +97,11 @@ async function loadSessions() {
 // ── System stats (model + drift + credibility) ────────────────
 async function loadSystemStats() {
   try {
-    const res = await fetch(`${API}/stats/system`, {
-      headers: { Authorization: `Bearer ${token}` }
+    const res = await apiFetch("/stats/system", {
+      headers: buildHeaders({ Authorization: `Bearer ${token}` })
     });
     if (!res.ok) return;
-    const data = await res.json();
+    const data = await readJsonSafe(res) || {};
 
     // Model info
     const mv = data.model || {};

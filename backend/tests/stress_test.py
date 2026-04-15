@@ -12,6 +12,8 @@ Run: python backend/tests/stress_test.py [base_url]
 Default: http://127.0.0.1:8000
 """
 
+__test__ = False
+
 import sys
 import time
 import json

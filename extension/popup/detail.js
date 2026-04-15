@@ -2,6 +2,10 @@ function esc(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
+function feedbackClaimText(data) {
+  return data.primary_claim || data.content || data.explanation || "";
+}
+
 document.getElementById("back-btn").addEventListener("click", () => {
   window.location.href = chrome.runtime.getURL("popup/popup.html");
 });
@@ -46,6 +50,27 @@ function render(data) {
     ${data.verdict_changed ? `<div class="verdict-changed-note" style="margin-top:8px">⚠️ This claim's verdict has changed since it was last checked.</div>` : ""}
     ${v === "uncertain" ? `<div class="uncertain-note" style="margin-top:8px">Signals conflict or evidence is insufficient for a definitive verdict.</div>` : ""}`;
   content.appendChild(banner);
+
+  // ── Moderation summary ───────────────────────────────────
+  if (data.moderation_summary) {
+    const mod = data.moderation_summary;
+    const riskPct = Math.round((mod.risk || 0) * 100);
+    const rec = (mod.recommendation || "allow").toLowerCase();
+    const recLabel = rec === "review" ? "REVIEW" : "ALLOW";
+    const recCls = rec === "review" ? "mod-review" : "mod-allow";
+    const flags = Array.isArray(mod.flags) ? mod.flags.slice(0, 4).join(" · ") : "";
+    const modEl = document.createElement("div");
+    modEl.className = `card mod-summary ${recCls}`;
+    modEl.innerHTML = `
+      <div class="mod-row">
+        <span class="material-symbols-outlined ms-12">policy</span>
+        <span class="mod-label">Moderation: ${recLabel}</span>
+        <span class="mod-risk">${riskPct}%</span>
+      </div>
+      <div class="mod-risk-bar"><div class="mod-risk-fill" style="width:${riskPct}%"></div></div>
+      ${flags ? `<div class="mod-flags">${esc(flags)}</div>` : ""}`;
+    content.appendChild(modEl);
+  }
 
   // ── Claim text ────────────────────────────────────────────
   const claimText = data.content || data.explanation || "";
@@ -261,14 +286,14 @@ document.getElementById("feedback-btn").addEventListener("click", () => {
     btn.querySelector(".material-symbols-outlined").textContent = "flag";
     btn.style.color = "var(--warn)";
     try {
-      await fetch(`${API}/feedback`, {
+      await apiFetch("/feedback", {
         method: "POST",
-        headers: {
+        headers: buildHeaders({
           "Content-Type": "application/json",
           "Authorization": `Bearer ${d.token}`
-        },
+        }),
         body: JSON.stringify({
-          claim_text: data.explanation || "",
+          claim_text: feedbackClaimText(data),
           predicted:  current,
           actual:     correct,
           confidence: data.confidence || null,

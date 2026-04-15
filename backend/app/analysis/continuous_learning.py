@@ -14,6 +14,7 @@ import os
 import json
 import logging
 import threading
+import subprocess
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,7 @@ def _run_retrain(feedback_count: int):
 
     try:
         logger.info("Auto-retraining triggered with %d feedback corrections", feedback_count)
-        import subprocess, sys
+        import sys
         script = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
                               "training", "retrain_from_feedback.py")
         if not os.path.exists(script):

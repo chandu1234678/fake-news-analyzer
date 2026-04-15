@@ -104,3 +104,7 @@ Multi-hop reasoning across evidence chains
 Multimodal (image + text consistency checking)
 Real-time web search grounding (not just NewsAPI)
 The single highest-impact thing you can do right now is Level 50 — fine-tune DeBERTa on diverse data. That alone takes you from level 10 to level 60+.
+$env:DATABASE_URL="sqlite:///./fake_news.db"; venv\Scripts\uvicorn app.main:app --reload --port 8000
+cd backend
+venv\Scripts\activate
+uvicorn app.main:app --reload --port 8000

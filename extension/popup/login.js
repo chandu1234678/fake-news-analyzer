@@ -43,6 +43,16 @@ function setLoadingWithHint(btnId, loading, label) {
   }
 }
 
+async function apiPost(path, body, timeoutMs = 25000) {
+  const res = await apiFetch(path, {
+    method: "POST",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body)
+  }, timeoutMs);
+  const data = await readJsonSafe(res) || {};
+  return { res, data };
+}
+
 // ── Login ─────────────────────────────────────────────────────
 document.getElementById("login-btn").addEventListener("click", doLogin);
 
@@ -53,16 +63,7 @@ async function doLogin() {
   if (!email || !password) return showError("Please fill in all fields");
   setLoadingWithHint("login-btn", true, "Sign In");
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
-    const res  = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    const data = await res.json();
+    const { res, data } = await apiPost("/auth/login", { email, password }, 25000);
     if (!res.ok) return showError(data.detail || "Login failed");
     await storeAuth(data);
     window.location.href = chrome.runtime.getURL("popup/popup.html");
@@ -86,16 +87,7 @@ async function doSignup() {
   if (password.length < 6) return showError("Password must be at least 6 characters");
   setLoadingWithHint("signup-btn", true, "Create Account");
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
-    const res  = await fetch(`${API}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    const data = await res.json();
+    const { res, data } = await apiPost("/auth/signup", { email, password, name }, 25000);
     if (!res.ok) return showError(data.detail || "Signup failed");
     await storeAuth(data);
     window.location.href = chrome.runtime.getURL("popup/popup.html");
@@ -113,13 +105,15 @@ document.getElementById("google-signup-btn").addEventListener("click", doGoogle)
 
 async function doGoogle() {
   hideError();
-  // Try getAuthToken first (desktop Chrome), fall back to launchWebAuthFlow (Kiwi/Android)
-  if (chrome.identity.getAuthToken) {
+  // Edge doesn't support getAuthToken — always use launchWebAuthFlow
+  // which works on both Chrome and Edge
+  const isEdge = navigator.userAgent.includes("Edg/");
+
+  if (!isEdge && chrome.identity.getAuthToken) {
     chrome.identity.getAuthToken({ interactive: true }, async (accessToken) => {
       if (!chrome.runtime.lastError && accessToken) {
         await exchangeAccessToken(accessToken);
       } else {
-        // Fallback for Kiwi Browser / Android
         await googleWebAuthFlow();
       }
     });
@@ -160,18 +154,9 @@ async function exchangeAccessToken(accessToken) {
       btn.textContent = "Signing in…";
       hintTimer = setTimeout(() => { btn.textContent = "Waking up server…"; }, 4000);
     }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
-    const res = await fetch(`${API}/auth/google`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: accessToken }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+    const { res, data } = await apiPost("/auth/google", { access_token: accessToken }, 60000);
     clearTimeout(hintTimer);
     if (btn) { btn.disabled = false; btn.textContent = "Continue with Google"; }
-    const data = await res.json();
     if (!res.ok) return showError(data.detail || "Google sign-in failed");
     await storeAuth(data);
     window.location.href = chrome.runtime.getURL("popup/popup.html");
@@ -238,16 +223,7 @@ async function doSendOTP() {
   if (!email) return showError("Please enter your email");
   setLoading("send-otp-btn", true, "Send Code");
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    const res = await fetch(`${API}/auth/forgot-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    const data = await res.json();
+    const { res, data } = await apiPost("/auth/forgot-password", { email }, 20000);
     if (res.status === 429) return showError(data.detail || "Too many requests. Wait a few minutes.");
     if (!res.ok) return showError(data.detail || "Failed to send code");
     _forgotEmail = email;    document.getElementById("form-forgot").style.display = "none";
@@ -296,12 +272,7 @@ document.getElementById("resend-otp-btn").addEventListener("click", async () => 
   hideError();
   document.getElementById("resend-otp-btn").style.display = "none";
   try {
-    const res = await fetch(`${API}/auth/forgot-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: _forgotEmail })
-    });
-    const data = await res.json();
+    const { res, data } = await apiPost("/auth/forgot-password", { email: _forgotEmail }, 20000);
     if (!res.ok) {
       showError(res.status === 429 ? "Too many requests. Wait a few minutes." : (data.detail || "Failed to resend."));
       document.getElementById("resend-otp-btn").style.display = "inline";
@@ -329,22 +300,12 @@ async function doResetPassword() {
   if (!newPassword || newPassword.length < 6) return showError("Password must be at least 6 characters");
   setLoading("reset-btn", true, "Reset Password");
   try {
-    const res  = await fetch(`${API}/auth/reset-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: _forgotEmail, otp, new_password: newPassword })
-    });
-    const data = await res.json();
+    const { res, data } = await apiPost("/auth/reset-password", { email: _forgotEmail, otp, new_password: newPassword }, 25000);
     if (!res.ok) return showError(data.detail || "Reset failed");
     showSuccess("Password reset! Signing you in…");
     // Auto-login with new password
     setTimeout(async () => {
-      const loginRes = await fetch(`${API}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: _forgotEmail, password: newPassword })
-      });
-      const loginData = await loginRes.json();
+      const { res: loginRes, data: loginData } = await apiPost("/auth/login", { email: _forgotEmail, password: newPassword }, 25000);
       if (loginRes.ok) {
         await storeAuth(loginData);
         window.location.href = chrome.runtime.getURL("popup/popup.html");

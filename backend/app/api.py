@@ -93,7 +93,7 @@ def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
             return None
         try:
             from app.analysis.image_check import check_image_consistency
-            return check_image_consistency(text, article_text=image_url)
+            return check_image_consistency(text, image_source=image_url)
         except Exception:
             return None
 
@@ -119,7 +119,8 @@ def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
         # Only add image/platform if needed (avoids spawning extra threads)
         if image_url:
             futures[executor.submit(do_image)] = "image"
-        if results.get("platform") is None:
+        import os
+        if os.getenv("GOOGLE_FACTCHECK_API_KEY"):
             futures[executor.submit(do_platform)] = "platform"
 
         for future in as_completed(futures):
@@ -174,8 +175,30 @@ def message(
     if session_id:
         save_message(db, session_id, "user", text)
 
-    # Chat vs claim
-    if not is_claim(text):
+    # Chat vs claim — if image attached, always run image analysis first
+    if req.image_url:
+        if not is_claim(text):
+            # Image with a chat-style message → describe image via Gemini Vision and reply
+            try:
+                from app.analysis.image_check import check_image_consistency
+                img_result = check_image_consistency(text, image_source=req.image_url)
+                description = img_result.get("description", "")
+                logger.info("Image chat: images_found=%s desc=%s",
+                            img_result.get("images_found"), description[:80] if description else "NONE")
+                if description and img_result.get("images_found"):
+                    reply = run_chat(
+                        f"The user sent an image. Here is what the image shows: {description}\n\nUser message: {text}",
+                        history
+                    )
+                else:
+                    reply = run_chat(text, history)
+            except Exception as e:
+                logger.warning("Image chat path failed: %s", e)
+                reply = run_chat(text, history)
+            if session_id:
+                save_message(db, session_id, "assistant", reply)
+            return {"is_claim": False, "session_id": session_id, "reply": reply}
+    elif not is_claim(text):
         reply = run_chat(text, history)
         if session_id:
             save_message(db, session_id, "assistant", reply)
@@ -192,6 +215,8 @@ def message(
 
     # ── Claim extraction for long inputs ──────────────────────
     sub_claims = extract_claims(text)
+    if not sub_claims:
+        sub_claims = [text]
     primary_claim = sub_claims[0]
 
     # ── Run core pipeline (3 workers max for 512MB RAM) ───────
@@ -204,6 +229,11 @@ def message(
     platform_result = pipeline["platform"] or {}
 
     ai_score = float(raw_ai_score) if raw_ai_score is not None else 0.5
+
+    # If image was analyzed, prepend its description to the explanation context
+    image_description = image_result.get("description", "")
+    if image_description and req.image_url:
+        logger.info("Image analyzed: %s", image_description[:100])
 
     # Manipulation analysis (fast, no API call)
     manip_score, manip_signals = analyze_manipulation(text)
@@ -255,16 +285,20 @@ def message(
     import hashlib
     from app.models import ClaimRecord
     claim_hash = hashlib.sha256(primary_claim.lower().strip().encode()).hexdigest()
-    db.add(ClaimRecord(
-        claim_hash=claim_hash,
-        claim_text=primary_claim[:500],
-        verdict=verdict,
-        confidence=confidence,
-        ml_score=ml_result["fake"],
-        ai_score=ai_score,
-        evidence_score=evidence_score,
-    ))
-    db.commit()
+    try:
+        db.add(ClaimRecord(
+            claim_hash=claim_hash,
+            claim_text=primary_claim[:500],
+            verdict=verdict,
+            confidence=confidence,
+            ml_score=ml_result["fake"],
+            ai_score=ai_score,
+            evidence_score=evidence_score,
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.warning("Claim record persistence failed: %s", e)
 
     # Check if this claim has been seen before with a different verdict
     prior = db.query(ClaimRecord).filter(
@@ -298,6 +332,30 @@ def message(
         detected_language=detected_lang if was_translated else None,
     )
 
+    moderation_flags = []
+    if verdict == "fake":
+        moderation_flags.append("likely_misinformation")
+    if platform_result.get("previously_debunked"):
+        moderation_flags.append("previously_debunked")
+    if manip_score > 0.2:
+        moderation_flags.append("manipulation_signals")
+    if entity_risk > 0.2:
+        moderation_flags.append("entity_mismatch")
+    if image_result.get("flag"):
+        moderation_flags.append(image_result["flag"])
+
+    moderation_risk = min(
+        1.0,
+        max(
+            confidence if verdict == "fake" else 0.0,
+            manip_score,
+            entity_risk,
+            image_result.get("mismatch_risk", 0.0),
+            0.9 if platform_result.get("previously_debunked") else 0.0,
+        ),
+    )
+    moderation_recommendation = "review" if moderation_risk >= 0.6 else "allow"
+
     result = {
         "is_claim": True,
         "session_id": session_id,
@@ -323,6 +381,7 @@ def message(
         "was_translated": was_translated if was_translated else None,
         # Image consistency
         "image_check": image_result if image_result.get("images_found") else None,
+        "image_description": image_result.get("description") if image_result.get("images_found") else None,
         # Platform spread / existing fact-checks
         "fact_checks": platform_result.get("fact_checks") or None,
         "previously_debunked": platform_result.get("previously_debunked") or None,
@@ -330,17 +389,25 @@ def message(
         "spread_risk": platform_result.get("spread_risk") if platform_result.get("spread_risk", 0) > 0 else None,
         # Explainability
         "explainability": explainability,
+        "moderation_summary": {
+            "risk": round(moderation_risk, 3),
+            "recommendation": moderation_recommendation,
+            "flags": moderation_flags or None,
+        },
     }
 
     if session_id:
-        save_message(db, session_id, "assistant", explanation, extra={
-            "is_claim": True,
-            "verdict": verdict,
-            "confidence": confidence,
-            "ml_score": ml_result["fake"],
-            "ai_score": ai_score,
-            "explanation": explanation,
-            "evidence": display_evidence,
-        })
+        try:
+            save_message(db, session_id, "assistant", explanation, extra={
+                "is_claim": True,
+                "verdict": verdict,
+                "confidence": confidence,
+                "ml_score": ml_result["fake"],
+                "ai_score": ai_score,
+                "explanation": explanation,
+                "evidence": display_evidence,
+            })
+        except Exception as e:
+            logger.warning("Failed to save assistant message: %s", e)
 
     return result

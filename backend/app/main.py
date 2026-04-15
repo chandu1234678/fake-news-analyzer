@@ -56,15 +56,16 @@ async def lifespan(app: FastAPI):
         logger.warning("TF-IDF preload failed: %s", e)
 
     # ── Train TF-IDF if no model file exists ──────────────────
-    model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "model.joblib")
-    if not os.path.exists(model_path):
-        try:
-            import subprocess, sys
-            train_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "training", "train.py")
-            subprocess.run([sys.executable, train_script], check=True)
-            logger.info("ML model trained on startup")
-        except Exception as e:
-            logger.warning("ML training failed on startup: %s", e)
+    if os.getenv("SKIP_TRAIN_ON_STARTUP", "false").lower() != "true":
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "model.joblib")
+        if not os.path.exists(model_path):
+            try:
+                import subprocess, sys
+                train_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "training", "train.py")
+                subprocess.run([sys.executable, train_script], check=True)
+                logger.info("ML model trained on startup")
+            except Exception as e:
+                logger.warning("ML training failed on startup: %s", e)
     yield
 
 

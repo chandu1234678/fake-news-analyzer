@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 import re
 
@@ -16,7 +16,7 @@ def _sanitize(v: str) -> str:
 class MessageRequest(BaseModel):
     message: str
     session_id: Optional[int] = None
-    history: Optional[List[dict]] = []
+    history: Optional[List[dict]] = Field(default_factory=list)
     image_url: Optional[str] = None   # URL of image attached to the claim
 
     @field_validator("message")
@@ -34,9 +34,11 @@ class MessageRequest(BaseModel):
         if v is None:
             return v
         v = v.strip()
-        if not v.startswith(("http://", "https://")):
-            raise ValueError("image_url must be a valid http/https URL")
-        return v[:500]
+        if v.startswith(("http://", "https://")):
+            return v[:500]
+        if v.startswith("data:image/") and ";base64," in v:
+            return v[:400000]
+        raise ValueError("image_url must be a valid http/https URL or data:image/* base64 payload")
 
 class MessageResponse(BaseModel):
     is_claim: bool
@@ -64,8 +66,10 @@ class MessageResponse(BaseModel):
     detected_language: Optional[str] = None
     was_translated: Optional[bool] = None
     image_check: Optional[dict] = None
+    image_description: Optional[str] = None
     fact_checks: Optional[List[dict]] = None
     previously_debunked: Optional[bool] = None
     debunk_sources: Optional[List[str]] = None
     spread_risk: Optional[float] = None
     explainability: Optional[dict] = None
+    moderation_summary: Optional[dict] = None
