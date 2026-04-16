@@ -162,11 +162,13 @@
 - [ ] 67. Add explanation to fact card UI
 
 ### P4.2 — Active Learning Loop
-- [ ] 68. Implement uncertainty sampling (0.45-0.55 confidence)
+- [x] 68. Implement uncertainty sampling (0.45-0.55 confidence)
 - [ ] 69. Create review queue UI for uncertain claims
-- [ ] 70. Store human corrections in `UserFeedback` table
-- [ ] 71. Retrain weekly on high-value corrections
-- [ ] 72. Track active learning metrics (labels per accuracy gain)
+- [x] 70. Store human corrections in `UserFeedback` table
+- [x] 71. Retrain weekly on high-value corrections
+- [x] 72. Track active learning metrics (labels per accuracy gain)
+
+**Status**: ✅ Backend complete! `retrain_from_feedback.py` + `UserFeedback` model implemented. UI review queue pending.
 
 ### P4.3 — A/B Testing & Evaluation
 - [ ] 73. Create A/B test framework in extension
@@ -176,10 +178,12 @@
 
 ### P4.4 — Deployment & Monitoring
 - [ ] 77. Deploy transformer model to HuggingFace Spaces (free inference API)
-- [ ] 78. Setup model versioning (semantic versioning)
+- [x] 78. Setup model versioning (semantic versioning)
 - [ ] 79. Add Prometheus metrics for model performance
 - [ ] 80. Create Grafana dashboard for real-time monitoring
 - [ ] 81. Implement canary deployment for model updates
+
+**Status**: Model versioning implemented in `model_version.json`
 
 ---
 
