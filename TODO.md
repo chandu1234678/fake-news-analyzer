@@ -217,7 +217,7 @@
 - [ ] 99. Optimize for performance (<50ms per scan)
 
 ### P5.5 — Multimodal Analysis
-- [ ] 100. Improve image-text consistency checking (current: Gemini Vision)
+- [x] 100. Improve image-text consistency checking (current: Gemini Vision)
 - [ ] 101. Add reverse image search integration (SerpAPI)
 - [ ] 102. Detect manipulated images (deepfakes, photoshop)
 - [ ] 103. Add video analysis (extract frames + audio transcription)
@@ -225,13 +225,17 @@
 - [ ] 105. Add OCR for text extraction from images (Tesseract)
 - [ ] 106. Detect AI-generated images (synthetic media detection)
 
+**Status**: ✅ Image-text consistency implemented! `image_check.py` uses Gemini Vision with rate limiting, retry logic, and fallback models.
+
 ### P5.6 — Knowledge Graph Integration
-- [ ] 107. Connect to Wikidata API for entity verification
+- [x] 107. Connect to Wikidata API for entity verification
 - [ ] 108. Extract named entities (people, orgs, dates) with spaCy
-- [ ] 109. Verify entity relationships against knowledge base
-- [ ] 110. Add entity consistency score to verdict
+- [x] 109. Verify entity relationships against knowledge base
+- [x] 110. Add entity consistency score to verdict
 - [ ] 111. Build local knowledge graph from verified claims
 - [ ] 112. Implement multi-hop reasoning across evidence chains
+
+**Status**: ✅ Core implementation complete! `wikidata.py` verifies entities, extracts facts, calculates risk scores. Uses regex patterns (spaCy optional).
 
 ### P5.7 — Adversarial Robustness
 - [ ] 113. Generate adversarial examples (character swaps, paraphrases)
