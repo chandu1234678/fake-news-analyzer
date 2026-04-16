@@ -100,3 +100,32 @@ class ClaimRecord(Base):
     __table_args__ = (
         Index("ix_claim_records_hash_created", "claim_hash", "created_at"),
     )
+
+
+class VelocityRecord(Base):
+    """Tracks claim velocity for rapid spread detection."""
+    __tablename__ = "velocity_records"
+
+    id                = Column(Integer, primary_key=True, index=True)
+    claim_hash        = Column(String(64), nullable=False, index=True)
+    claim_text        = Column(Text, nullable=False)
+    velocity_score    = Column(Float, nullable=False)
+    count_5min        = Column(Integer, nullable=False)
+    count_1hr         = Column(Integer, nullable=False)
+    count_24hr        = Column(Integer, nullable=False)
+    is_viral          = Column(Boolean, default=False, index=True)
+    is_trending       = Column(Boolean, default=False, index=True)
+    cooldown_score    = Column(Float, nullable=True)
+    cooldown_level    = Column(String, nullable=True)
+    # Phase 2.5: Semantic clustering
+    cluster_id        = Column(Integer, nullable=True, index=True)
+    cluster_size      = Column(Integer, nullable=True)
+    campaign_score    = Column(Float, nullable=True)
+    is_coordinated    = Column(Boolean, default=False, index=True)
+    created_at        = Column(DateTime, default=datetime.utcnow, index=True)
+
+    __table_args__ = (
+        Index("ix_velocity_records_hash_created", "claim_hash", "created_at"),
+        Index("ix_velocity_records_viral_created", "is_viral", "created_at"),
+        Index("ix_velocity_records_coordinated", "is_coordinated", "created_at"),
+    )

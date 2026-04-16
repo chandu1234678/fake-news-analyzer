@@ -1,7 +1,11 @@
 {
-  "model": "Bharat2004/factchecker-deberta",
-  "base": "distilbert-base-uncased",
-  "version": "20260411_1951",
-  "accuracy": 0.9891,
-  "f1_macro": 0.9891
+  "model": "Bharat2004/deberta-fakenews-detector",
+  "base": "microsoft/deberta-v3-base",
+  "version": "20260416_production",
+  "accuracy": 0.9663,
+  "f1_macro": 0.9646,
+  "training_samples": 273932,
+  "training_date": "2026-04-16",
+  "source": "huggingface_hub",
+  "notes": "Production model trained on 7 diverse datasets with 2 epochs. Auto-downloads from HuggingFace Hub."
 }

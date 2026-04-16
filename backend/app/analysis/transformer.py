@@ -25,45 +25,62 @@ class TransformerClassifier:
         Initialize transformer classifier
         
         Args:
-            model_path: Path to model directory. If None, uses default path.
+            model_path: Path to model directory or HuggingFace model ID.
+                       If None, uses default HF model or local path.
         """
         if model_path is None:
-            # Default path: backend/data/deberta_factcheck
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            model_path = os.path.join(base_dir, "data", "deberta_factcheck")
+            # Try HuggingFace Hub first, then local path
+            # Your uploaded model ID
+            model_path = "Bharat2004/deberta-fakenews-detector"
+            # Fallback to local path if HF model not found
+            self.fallback_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                "data", "deberta_factcheck"
+            )
+        else:
+            self.fallback_path = None
         
         self.model_path = model_path
         self.classifier = None
         self._load_model()
     
     def _load_model(self):
-        """Load transformer model from disk"""
+        """Load transformer model from HuggingFace Hub or local disk"""
         try:
             from transformers import pipeline
             
-            if not os.path.exists(self.model_path):
-                logger.warning(f"Transformer model not found at {self.model_path}")
+            # Try loading from HuggingFace Hub or local path
+            try:
+                device = 0 if torch.cuda.is_available() else -1
+                self.classifier = pipeline(
+                    "text-classification",
+                    model=self.model_path,
+                    device=device,
+                    truncation=True,
+                    max_length=512
+                )
+                logger.info(f"Transformer model loaded from {self.model_path}")
+                logger.info(f"Device: {'GPU' if device == 0 else 'CPU'}")
                 return
-            
-            # Check for required files
-            required_files = ['config.json', 'tokenizer_config.json']
-            missing = [f for f in required_files if not os.path.exists(os.path.join(self.model_path, f))]
-            if missing:
-                logger.warning(f"Missing model files: {missing}")
-                return
-            
-            # Load pipeline
-            device = 0 if torch.cuda.is_available() else -1
-            self.classifier = pipeline(
-                "text-classification",
-                model=self.model_path,
-                device=device,
-                truncation=True,
-                max_length=512
-            )
-            
-            logger.info(f"Transformer model loaded from {self.model_path}")
-            logger.info(f"Device: {'GPU' if device == 0 else 'CPU'}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to load from {self.model_path}: {e}")
+                
+                # Try fallback local path if available
+                if self.fallback_path and os.path.exists(self.fallback_path):
+                    logger.info(f"Trying fallback path: {self.fallback_path}")
+                    device = 0 if torch.cuda.is_available() else -1
+                    self.classifier = pipeline(
+                        "text-classification",
+                        model=self.fallback_path,
+                        device=device,
+                        truncation=True,
+                        max_length=512
+                    )
+                    logger.info(f"Transformer model loaded from fallback path")
+                    logger.info(f"Device: {'GPU' if device == 0 else 'CPU'}")
+                else:
+                    logger.warning("No fallback path available or path doesn't exist")
             
         except ImportError:
             logger.warning("transformers library not installed. Install with: pip install transformers torch")

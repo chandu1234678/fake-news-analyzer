@@ -424,6 +424,255 @@ function addFactCard(data, scroll = true, animate = true) {
   const mlFill    = mlPct > 50 ? "fill-fake" : "fill-real";
   const newsFill  = newsPct > 50 ? "fill-real" : "fill-fake";
 
+  // ── Phase 2: Cooldown friction UX ─────────────────────────────
+  const cooldown = data.cooldown || null;
+  if (cooldown && cooldown.cooldown_level) {
+    const level = cooldown.cooldown_level;
+    
+    if (level === "VIRAL_PANIC") {
+      showViralPanicInterstitial(data, cooldown, () => {
+        _renderFactCard(data, scroll, animate);
+      });
+      return;
+    } else if (level === "HIGH_CONCERN") {
+      showHighConcernFriction(data, cooldown, () => {
+        _renderFactCard(data, scroll, animate);
+      });
+      return;
+    } else if (level === "CAUTION") {
+      showCautionBanner(data, cooldown);
+    }
+  }
+
+  // Normal rendering (no friction or CAUTION level)
+  _renderFactCard(data, scroll, animate);
+}
+
+// ── Friction UX Components (Phase 2.3) ────────────────────────
+
+function showViralPanicInterstitial(data, cooldown, onComplete) {
+  const overlay = document.createElement("div");
+  overlay.className = "friction-overlay viral-panic";
+  overlay.innerHTML = `
+    <div class="friction-modal">
+      <div class="friction-icon">
+        <span class="material-symbols-outlined">warning</span>
+      </div>
+      <div class="friction-title">⚠️ VIRAL MISINFORMATION ALERT</div>
+      <div class="friction-subtitle">This claim is spreading rapidly and shows high risk of being false</div>
+      <div class="friction-stats">
+        <div class="friction-stat">
+          <span class="friction-stat-label">Fake Probability</span>
+          <span class="friction-stat-value">${Math.round((cooldown.breakdown?.components?.fake_probability?.value || 0) * 100)}%</span>
+        </div>
+        <div class="friction-stat">
+          <span class="friction-stat-label">Velocity Score</span>
+          <span class="friction-stat-value">${Math.round((cooldown.breakdown?.components?.velocity?.value || 0) * 100)}%</span>
+        </div>
+        <div class="friction-stat">
+          <span class="friction-stat-label">Cooldown Score</span>
+          <span class="friction-stat-value">${Math.round((cooldown.cooldown_score || 0) * 100)}%</span>
+        </div>
+      </div>
+      <div class="friction-message">
+        Please take a moment to review the evidence before sharing this content.
+        Viral misinformation can cause real harm.
+      </div>
+      <div class="friction-countdown">
+        <div class="countdown-ring">
+          <svg class="countdown-svg" viewBox="0 0 36 36">
+            <path class="countdown-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="countdown-progress" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <div class="countdown-number" id="friction-countdown">10</div>
+        </div>
+        <div class="countdown-label">seconds remaining</div>
+      </div>
+      <button class="friction-btn friction-btn-disabled" id="friction-continue" disabled>Continue to Analysis</button>
+      <button class="friction-btn-link" id="friction-bypass">I understand the risks, skip this</button>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  let secondsLeft = cooldown.delay_seconds || 10;
+  const countdownEl = document.getElementById("friction-countdown");
+  const continueBtn = document.getElementById("friction-continue");
+  const bypassBtn = document.getElementById("friction-bypass");
+  const progressPath = overlay.querySelector(".countdown-progress");
+  
+  const timer = setInterval(() => {
+    secondsLeft--;
+    countdownEl.textContent = secondsLeft;
+    
+    const progress = ((cooldown.delay_seconds - secondsLeft) / cooldown.delay_seconds) * 100;
+    progressPath.style.strokeDasharray = `${progress}, 100`;
+    
+    if (secondsLeft <= 0) {
+      clearInterval(timer);
+      continueBtn.disabled = false;
+      continueBtn.classList.remove("friction-btn-disabled");
+      continueBtn.classList.add("friction-btn-enabled");
+    }
+  }, 1000);
+  
+  continueBtn.addEventListener("click", () => {
+    clearInterval(timer);
+    trackFrictionEvent("viral_panic_completed", cooldown);
+    overlay.remove();
+    onComplete();
+  });
+  
+  bypassBtn.addEventListener("click", () => {
+    clearInterval(timer);
+    trackFrictionEvent("viral_panic_bypassed", cooldown);
+    overlay.remove();
+    onComplete();
+  });
+}
+
+function showHighConcernFriction(data, cooldown, onComplete) {
+  const row = document.createElement("div");
+  row.className = "bot-row";
+  
+  const avatar = document.createElement("div");
+  avatar.className = "bot-avatar";
+  avatar.innerHTML = `<span class="material-symbols-outlined">warning</span>`;
+  
+  const card = document.createElement("div");
+  card.className = "friction-card high-concern";
+  card.innerHTML = `
+    <div class="friction-card-header">
+      <span class="material-symbols-outlined friction-card-icon">report</span>
+      <div class="friction-card-title">High-Risk Content Detected</div>
+    </div>
+    <div class="friction-card-body">
+      <div class="friction-card-message">
+        This claim shows signs of rapid spread and potential misinformation.
+        Please review the analysis carefully before sharing.
+      </div>
+      <div class="friction-card-stats">
+        <div class="friction-mini-stat">
+          <span class="friction-mini-label">Cooldown Score</span>
+          <span class="friction-mini-value">${Math.round((cooldown.cooldown_score || 0) * 100)}%</span>
+        </div>
+        <div class="friction-mini-stat">
+          <span class="friction-mini-label">Velocity</span>
+          <span class="friction-mini-value">${Math.round((cooldown.breakdown?.components?.velocity?.value || 0) * 100)}%</span>
+        </div>
+      </div>
+      <div class="friction-card-countdown">
+        <div class="friction-countdown-bar">
+          <div class="friction-countdown-fill" id="friction-countdown-fill"></div>
+        </div>
+        <div class="friction-countdown-text">
+          Please wait <span id="friction-countdown-seconds">5</span> seconds...
+        </div>
+      </div>
+      <button class="friction-card-btn friction-btn-disabled" id="friction-card-continue" disabled>
+        View Analysis
+      </button>
+    </div>
+  `;
+  
+  row.appendChild(avatar);
+  row.appendChild(card);
+  chatContainer.appendChild(row);
+  scrollBottom();
+  
+  let secondsLeft = cooldown.delay_seconds || 5;
+  const secondsEl = document.getElementById("friction-countdown-seconds");
+  const fillEl = document.getElementById("friction-countdown-fill");
+  const continueBtn = document.getElementById("friction-card-continue");
+  
+  const timer = setInterval(() => {
+    secondsLeft--;
+    secondsEl.textContent = secondsLeft;
+    
+    const progress = ((cooldown.delay_seconds - secondsLeft) / cooldown.delay_seconds) * 100;
+    fillEl.style.width = `${progress}%`;
+    
+    if (secondsLeft <= 0) {
+      clearInterval(timer);
+      continueBtn.disabled = false;
+      continueBtn.classList.remove("friction-btn-disabled");
+      continueBtn.classList.add("friction-btn-enabled");
+      continueBtn.textContent = "Continue to Analysis";
+    }
+  }, 1000);
+  
+  continueBtn.addEventListener("click", () => {
+    clearInterval(timer);
+    trackFrictionEvent("high_concern_completed", cooldown);
+    row.remove();
+    onComplete();
+  });
+}
+
+function showCautionBanner(data, cooldown) {
+  const banner = document.createElement("div");
+  banner.className = "friction-banner caution";
+  banner.innerHTML = `
+    <span class="material-symbols-outlined friction-banner-icon">info</span>
+    <div class="friction-banner-content">
+      <div class="friction-banner-title">Caution: Verify Before Sharing</div>
+      <div class="friction-banner-text">
+        This content shows moderate risk signals. Review the analysis below.
+      </div>
+    </div>
+    <button class="friction-banner-close" id="friction-banner-close">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  `;
+  
+  chatContainer.appendChild(banner);
+  scrollBottom();
+  
+  document.getElementById("friction-banner-close").addEventListener("click", () => {
+    trackFrictionEvent("caution_dismissed", cooldown);
+    banner.remove();
+  });
+  
+  trackFrictionEvent("caution_shown", cooldown);
+}
+
+function trackFrictionEvent(eventType, cooldown) {
+  try {
+    chrome.storage.local.get("frictionAnalytics", d => {
+      const analytics = d.frictionAnalytics || [];
+      analytics.push({
+        event: eventType,
+        cooldown_level: cooldown.cooldown_level,
+        cooldown_score: cooldown.cooldown_score,
+        timestamp: Date.now()
+      });
+      chrome.storage.local.set({ frictionAnalytics: analytics.slice(-100) });
+    });
+  } catch (e) {
+    console.warn("Failed to track friction event:", e);
+  }
+}
+
+// ── Internal fact card renderer ───────────────────────────────
+
+function _renderFactCard(data, scroll = true, animate = true) {
+  const verdict  = (data.verdict || "uncertain").toLowerCase();
+  const confPct  = Math.round((data.confidence || 0) * 100);
+  const mlPct    = Math.round((data.ml_score   || 0) * 100);
+  const aiPct    = Math.round((data.ai_score   || 0) * 100);
+  const newsPct  = data.evidence_score != null
+    ? Math.round(data.evidence_score * 100)
+    : (data.evidence_articles?.length || data.evidence?.length) ? 60 : 0;
+
+  const srcCount = data.evidence_articles?.length || data.evidence?.length || 0;
+
+  const vClass    = verdict === "real" ? "v-real" : verdict === "fake" ? "v-fake" : "v-uncertain";
+  const vIcon     = verdict === "real" ? "check_circle" : verdict === "fake" ? "cancel" : "help";
+  const vLabel    = verdict === "real" ? "REAL" : verdict === "fake" ? "FAKE" : "UNCERTAIN";
+  const confColor = verdict === "real" ? "var(--real)" : verdict === "fake" ? "var(--fake)" : "var(--warn)";
+  const mlFill    = mlPct > 50 ? "fill-fake" : "fill-real";
+  const newsFill  = newsPct > 50 ? "fill-real" : "fill-fake";
+
   const evidenceArticles = ensureArray(data.evidence_articles);
   const evidenceUrls = ensureArray(data.evidence);
   const hasArticles = evidenceArticles.length;

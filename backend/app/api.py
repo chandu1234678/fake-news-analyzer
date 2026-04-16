@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,38 @@ class FeedbackRequest(BaseModel):
 def source_credibility():
     """Return dynamic trust scores for all tracked domains."""
     return {"sources": get_all_scores()}
+
+
+@router.get("/velocity/stats")
+def velocity_stats():
+    """Return velocity tracking statistics."""
+    try:
+        from app.analysis.velocity import get_stats, get_top_viral
+        stats = get_stats()
+        top_viral = get_top_viral(limit=10)
+        return {
+            "stats": stats,
+            "top_viral": top_viral
+        }
+    except Exception as e:
+        logger.error("Velocity stats failed: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to retrieve velocity stats")
+
+
+@router.get("/clustering/stats")
+def clustering_stats():
+    """Return semantic clustering statistics."""
+    try:
+        from app.analysis.semantic_clustering import get_cluster_stats, get_top_clusters
+        stats = get_cluster_stats()
+        top_clusters = get_top_clusters(limit=10)
+        return {
+            "stats": stats,
+            "top_clusters": top_clusters
+        }
+    except Exception as e:
+        logger.error("Clustering stats failed: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to retrieve clustering stats")
 
 
 @router.post("/feedback")
@@ -99,7 +132,6 @@ def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
 
     # Only run platform tracker if Google Fact Check API key is set
     def do_platform():
-        import os
         if not os.getenv("GOOGLE_FACTCHECK_API_KEY"):
             return None
         try:
@@ -119,7 +151,6 @@ def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
         # Only add image/platform if needed (avoids spawning extra threads)
         if image_url:
             futures[executor.submit(do_image)] = "image"
-        import os
         if os.getenv("GOOGLE_FACTCHECK_API_KEY"):
             futures[executor.submit(do_platform)] = "platform"
 
@@ -238,11 +269,97 @@ def message(
     # Manipulation analysis (fast, no API call)
     manip_score, manip_signals = analyze_manipulation(text)
 
+    # ── Velocity tracking (rapid spread detection) ────────────
+    velocity_metrics = None
+    try:
+        from app.analysis.velocity import track_claim
+        velocity_metrics = track_claim(primary_claim)
+        logger.debug("Velocity: score=%.3f viral=%s trending=%s",
+                    velocity_metrics.get("velocity_score", 0),
+                    velocity_metrics.get("is_viral", False),
+                    velocity_metrics.get("is_trending", False))
+    except Exception as e:
+        logger.warning("Velocity tracking failed: %s", e)
+        velocity_metrics = {
+            "velocity_score": 0.0,
+            "is_viral": False,
+            "is_trending": False
+        }
+    
+    # ── Semantic clustering (Phase 2.5) ────────────────────────
+    cluster_data = None
+    try:
+        from app.analysis.semantic_clustering import cluster_claim
+        cluster_data = cluster_claim(primary_claim)
+        if cluster_data and not cluster_data.get("error"):
+            logger.debug("Clustering: cluster_id=%s size=%d campaign_score=%.3f",
+                        cluster_data.get("cluster_id"),
+                        cluster_data.get("cluster_size", 0),
+                        cluster_data.get("campaign_score", 0))
+    except ImportError as e:
+        logger.debug("Semantic clustering not available: %s", e)
+        cluster_data = None
+    except Exception as e:
+        logger.warning("Semantic clustering failed: %s", e)
+        cluster_data = None
+    
+    # Default cluster data if not available
+    if not cluster_data:
+        cluster_data = {
+            "cluster_id": None,
+            "cluster_size": 1,
+            "campaign_score": 0.0,
+            "is_coordinated_campaign": False
+        }
+    
+    # ── Social graph analysis (Phase 2.4) ──────────────────────
+    # Only run if enabled (requires API keys)
+    social_data = None
+    if os.getenv("SOCIAL_GRAPH_ENABLED", "false").lower() == "true":
+        try:
+            from app.analysis.social_graph import analyze_social_spread
+            social_data = analyze_social_spread(primary_claim, velocity_metrics)
+            if social_data:
+                logger.debug("Social graph: campaign_score=%.3f coordinated=%s",
+                            social_data.get("campaign_score", 0),
+                            social_data.get("is_coordinated_campaign", False))
+        except ImportError as e:
+            logger.debug("Social graph analysis not available: %s", e)
+            social_data = None
+        except Exception as e:
+            logger.warning("Social graph analysis failed: %s", e)
+            social_data = None
+
+    # ── Domain classification (Phase 3.3) ──────────────────────
+    domain_info = None
+    try:
+        from app.analysis.domain_classifier import classify_domain, get_domain_specific_context
+        domain, domain_confidence, domain_scores = classify_domain(primary_claim)
+        context = get_domain_specific_context(domain)
+        
+        # Check for domain-specific red flags
+        red_flags_detected = [
+            flag for flag in context['red_flags']
+            if flag.lower() in primary_claim.lower()
+        ]
+        
+        domain_info = {
+            'category': domain,
+            'confidence': domain_confidence,
+            'scores': domain_scores,
+            'red_flags_detected': red_flags_detected,
+            'trusted_sources': context['trusted_sources'][:5],  # Top 5
+            'verification_tips': context['verification_tips']
+        }
+        
+        logger.info("Domain classified: %s (confidence: %.3f)", domain, domain_confidence)
+    except Exception as e:
+        logger.error("Domain classification failed: %s", e, exc_info=True)
+    
     # ── Wikidata entity verification (only if enabled) ────────
     # Disabled by default on free tier — set WIKIDATA_ENABLED=true to enable
     entity_verifications = []
     entity_risk = 0.0
-    import os
     if os.getenv("WIKIDATA_ENABLED", "false").lower() == "true":
         try:
             from app.analysis.wikidata import verify_entities, get_entity_risk_score
@@ -269,6 +386,49 @@ def message(
         logger.info("Verdict overridden to fake — previously debunked by: %s",
                     platform_result.get("debunk_sources", []))
 
+    # ── Cooldown score (viral misinformation risk) ────────────
+    cooldown_data = None
+    try:
+        from app.analysis.cooldown import (
+            calculate_cooldown_score,
+            get_evidence_conflict_score,
+            get_emotional_intensity_score
+        )
+        
+        # Calculate component scores
+        fake_probability = adjusted_ml if verdict == "fake" else (1.0 - confidence)
+        velocity_score = velocity_metrics.get("velocity_score", 0.0)
+        
+        # Stance summary for evidence conflict
+        stance_summary = {"support": 0, "contradict": 0, "neutral": 0}
+        for a in evidence_articles:
+            s = a.get("stance", "neutral")
+            stance_summary[s] = stance_summary.get(s, 0) + 1
+        
+        emotional_intensity = get_emotional_intensity_score(manip_score, manip_signals)
+        evidence_conflict = get_evidence_conflict_score(evidence_score, stance_summary)
+        
+        # Calculate cooldown score
+        cooldown_score, cooldown_level, cooldown_breakdown = calculate_cooldown_score(
+            fake_probability=fake_probability,
+            velocity_score=velocity_score,
+            emotional_intensity=emotional_intensity,
+            evidence_conflict=evidence_conflict
+        )
+        
+        cooldown_data = {
+            "cooldown_score": cooldown_score,
+            "cooldown_level": cooldown_level,
+            "friction_type": cooldown_breakdown["friction_type"],
+            "delay_seconds": cooldown_breakdown["delay_seconds"],
+            "breakdown": cooldown_breakdown
+        }
+        
+        logger.info("Cooldown: score=%.3f level=%s friction=%s",
+                   cooldown_score, cooldown_level, cooldown_breakdown["friction_type"])
+    except Exception as e:
+        logger.warning("Cooldown calculation failed: %s", e)
+
     # Highlighted suspicious phrases (after verdict is known)
     highlights = get_highlights(text) if verdict == "fake" or manip_score > 0.2 else []
 
@@ -281,9 +441,9 @@ def message(
     # Record for drift detection
     record_drift(verdict, confidence)
 
-    # Temporal claim tracking
+    # Temporal claim tracking + velocity persistence
     import hashlib
-    from app.models import ClaimRecord
+    from app.models import ClaimRecord, VelocityRecord
     claim_hash = hashlib.sha256(primary_claim.lower().strip().encode()).hexdigest()
     try:
         db.add(ClaimRecord(
@@ -295,10 +455,38 @@ def message(
             ai_score=ai_score,
             evidence_score=evidence_score,
         ))
+        
+        # Store velocity record if tracking was successful
+        if velocity_metrics and cooldown_data:
+            try:
+                velocity_record = VelocityRecord(
+                    claim_hash=claim_hash,
+                    claim_text=primary_claim[:500],
+                    velocity_score=velocity_metrics.get("velocity_score", 0.0),
+                    count_5min=velocity_metrics.get("count_5min", 0),
+                    count_1hr=velocity_metrics.get("count_1hr", 0),
+                    count_24hr=velocity_metrics.get("count_24hr", 0),
+                    is_viral=velocity_metrics.get("is_viral", False),
+                    is_trending=velocity_metrics.get("is_trending", False),
+                    cooldown_score=cooldown_data.get("cooldown_score"),
+                    cooldown_level=cooldown_data.get("cooldown_level"),
+                )
+                
+                # Add clustering data (Phase 2.5) if available
+                if cluster_data and cluster_data.get("cluster_id") is not None:
+                    velocity_record.cluster_id = cluster_data.get("cluster_id")
+                    velocity_record.cluster_size = cluster_data.get("cluster_size")
+                    velocity_record.campaign_score = cluster_data.get("campaign_score")
+                    velocity_record.is_coordinated = cluster_data.get("is_coordinated_campaign", False)
+                
+                db.add(velocity_record)
+            except Exception as ve:
+                logger.warning("Velocity record creation failed: %s", ve)
+        
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.warning("Claim record persistence failed: %s", e)
+        logger.warning("Claim/velocity record persistence failed: %s", e)
 
     # Check if this claim has been seen before with a different verdict
     prior = db.query(ClaimRecord).filter(
@@ -307,11 +495,12 @@ def message(
     ).count()
     verdict_changed = prior > 0
 
-    # Stance summary for frontend contradiction meter
-    stance_summary = {"support": 0, "contradict": 0, "neutral": 0}
-    for a in evidence_articles:
-        s = a.get("stance", "neutral")
-        stance_summary[s] = stance_summary.get(s, 0) + 1
+    # Stance summary for frontend contradiction meter (already calculated above for cooldown)
+    if not 'stance_summary' in locals():
+        stance_summary = {"support": 0, "contradict": 0, "neutral": 0}
+        for a in evidence_articles:
+            s = a.get("stance", "neutral")
+            stance_summary[s] = stance_summary.get(s, 0) + 1
 
     # ── Explainability report ──────────────────────────────────
     explainability = build_explanation(
@@ -387,6 +576,29 @@ def message(
         "previously_debunked": platform_result.get("previously_debunked") or None,
         "debunk_sources": platform_result.get("debunk_sources") or None,
         "spread_risk": platform_result.get("spread_risk") if platform_result.get("spread_risk", 0) > 0 else None,
+        # Velocity tracking (Phase 2)
+        "velocity_metrics": {
+            "velocity_score": velocity_metrics.get("velocity_score", 0.0),
+            "count_5min": velocity_metrics.get("count_5min", 0),
+            "count_1hr": velocity_metrics.get("count_1hr", 0),
+            "count_24hr": velocity_metrics.get("count_24hr", 0),
+            "is_viral": velocity_metrics.get("is_viral", False),
+            "is_trending": velocity_metrics.get("is_trending", False),
+        } if velocity_metrics else None,
+        # Cooldown score (Phase 2)
+        "cooldown": cooldown_data if cooldown_data else None,
+        # Semantic clustering (Phase 2.5)
+        "clustering": {
+            "cluster_id": cluster_data.get("cluster_id"),
+            "cluster_size": cluster_data.get("cluster_size", 1),
+            "similar_claims": cluster_data.get("similar_claims", []),
+            "is_coordinated_campaign": cluster_data.get("is_coordinated_campaign", False),
+            "campaign_score": cluster_data.get("campaign_score", 0.0),
+        } if cluster_data and cluster_data.get("cluster_id") is not None else None,
+        # Social graph analysis (Phase 2.4)
+        "social_spread": social_data if social_data else None,
+        # Domain classification (Phase 3.3)
+        "domain": domain_info if domain_info else None,
         # Explainability
         "explainability": explainability,
         "moderation_summary": {

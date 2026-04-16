@@ -2,6 +2,7 @@
 .env
 *.env
 .env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -15,10 +16,14 @@ build/
 .venv/
 venv/
 backend/venv/
+.pytest_cache/
+*.py[cod]
+*$py.class
 
 # Database
 *.db
 *.sqlite3
+fake_news.db
 
 # Large training datasets — train locally, commit model.joblib instead
 backend/training/Fake.csv
@@ -26,18 +31,95 @@ backend/training/True.csv
 backend/training/fake_news_dataset_44k.csv
 backend/training/fake_news_dataset_20k.csv
 backend/training/fake_news.csv
+eval_holdout.csv
+*.csv
+!backend/training/data/sample_labeled.csv
+!backend/training/data/sample_unlabeled.csv
 
-# Node
-node_modules/
+# Training artifacts
+*.ipynb_checkpoints/
+*.pt
+*.pth
+*.onnx
+production_model/
+production_model_onnx/
+backend/training/models/domain_specific/
+backend/training/data/domain_specific/
+backend/training/data/multilingual/
+
+# Test files
+test_*.py
+*_test.py
+comprehensive_test.py
+test_api.py
+SIMPLE_MODEL_CHECK.py
+TEST_MODEL_FROM_HF.py
+!backend/tests/
+
+# Documentation cleanup - phase plans and completed work
+PHASE_*.md
+COMPLETE*.md
+WORK_COMPLETE*.md
+CODE_QUALITY*.md
+*_PLAN.md
+*_IMPLEMENTATION.md
+*_SUMMARY.md
+
+# Old training guides and scripts
+FINAL_*.py
+FINAL_*.md
+TRAIN_*.py
+COMPLETE_*.py
+COMPLETE_*.ipynb
+READY_*.txt
+QUICK_*.txt
+MEMORY_*.md
+P1.*.md
+UPLOAD_TO_COLAB.md
+UPLOAD_MODEL_TO_HF.py
+COLAB_*.txt
+START_*.md
+USE_THIS_*.md
+GRADIENT_*.md
+GPU_*.txt
+ENABLE_*.md
+COLAB_STEPS.md
+PRODUCTION_TRAINING_*.md
+HF_UPLOAD_*.md
+commands.txt
 
 # ML model artifacts — committed so Render doesn't need to retrain on every deploy
 # Uncomment below if you want to exclude them and retrain on startup instead
 # backend/data/model.joblib
 # backend/data/vectorizer.joblib
+# backend/data/meta_model.joblib
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
 
 # OS
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
 # IDE
-.vscode/settings.json
+.vscode/
+.idea/
+.kiro/
+*.code-workspace
+.sixth/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup

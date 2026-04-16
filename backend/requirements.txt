@@ -25,3 +25,11 @@ pytest
 # Transformer-based ML model (RoBERTa) — only used when RAM > 1.5 GB
 transformers>=4.40.0
 torch>=2.2.0
+# Phase 2.5: Semantic clustering
+sentence-transformers>=2.2.0
+hdbscan>=0.8.33
+# Phase 2.4: Social graph analysis (optional)
+praw>=7.7.0  # Reddit API
+tweepy>=4.14.0  # Twitter API (alternative to requests)
+# Phase 3: Self-Labeling Pipeline
+snorkel>=0.10.0

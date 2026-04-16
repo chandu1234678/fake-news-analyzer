@@ -6,13 +6,15 @@
 
 <p align="center">
   A Chrome extension that verifies news claims in real time using a multi-signal pipeline:<br>
-  custom-trained ML model · multi-provider LLM reasoning · live news evidence · meta-decision model
+  DeBERTa transformer (96.63% accuracy) · multi-provider LLM reasoning · live news evidence · meta-decision model
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11-blue" />
   <img src="https://img.shields.io/badge/FastAPI-0.115-green" />
   <img src="https://img.shields.io/badge/Chrome-MV3-yellow" />
+  <img src="https://img.shields.io/badge/Model-DeBERTa--v3-blue" />
+  <img src="https://img.shields.io/badge/Accuracy-96.63%25-brightgreen" />
   <img src="https://img.shields.io/badge/License-MIT-lightgrey" />
 </p>
 

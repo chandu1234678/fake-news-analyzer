@@ -71,5 +71,15 @@ class MessageResponse(BaseModel):
     previously_debunked: Optional[bool] = None
     debunk_sources: Optional[List[str]] = None
     spread_risk: Optional[float] = None
+    # Phase 2: Velocity tracking and cooldown
+    velocity_metrics: Optional[dict] = None
+    cooldown: Optional[dict] = None
+    # Phase 2.5: Semantic clustering
+    clustering: Optional[dict] = None
+    # Phase 2.4: Social graph analysis
+    social_spread: Optional[dict] = None
+    # Phase 3.3: Domain classification
+    domain: Optional[dict] = None
+    # Explainability and moderation
     explainability: Optional[dict] = None
     moderation_summary: Optional[dict] = None
