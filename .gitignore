@@ -64,6 +64,7 @@ CODE_QUALITY*.md
 *_PLAN.md
 *_IMPLEMENTATION.md
 *_SUMMARY.md
+!PROGRESS_SUMMARY.md
 
 # Old training guides and scripts
 FINAL_*.py
