@@ -475,7 +475,7 @@
 - [x] Email — Brevo HTTP API, works on Render, any recipient
 - [x] All changes committed and pushed
 - [x] Cleanup — Deleted completed plan files, unnecessary training files, updated .gitignore
-- [ ] UptimeRobot / cron-job.org — external ping every 5 min to keep Render alive
+- [x] UptimeRobot / cron-job.org — external ping every 5 min to keep Render alive
 
 ---
 
