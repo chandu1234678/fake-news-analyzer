@@ -1,0 +1,166 @@
+{
+  "dashboard": {
+    "title": "FactCheck AI - Production Monitoring",
+    "tags": ["factcheck", "ml", "production"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{endpoint}} - {{status}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Request Duration (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 3,
+        "title": "Model Predictions by Verdict",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(model_predictions_total[5m])",
+            "legendFormat": "{{verdict}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 4,
+        "title": "Model Accuracy (24h)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "model_accuracy{time_window=\"24h\"}",
+            "legendFormat": "Accuracy"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 6, "h": 8}
+      },
+      {
+        "id": 5,
+        "title": "Model Confidence Distribution",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(model_confidence_bucket[5m])",
+            "legendFormat": "{{verdict}}"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 8, "w": 6, "h": 8}
+      },
+      {
+        "id": 6,
+        "title": "SHAP Explanation Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(shap_explanations_total{status=\"success\"}[5m]) / rate(shap_explanations_total[5m])",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 16, "w": 6, "h": 4}
+      },
+      {
+        "id": 7,
+        "title": "SHAP Duration (p95)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(shap_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 Duration"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 16, "w": 6, "h": 4}
+      },
+      {
+        "id": 8,
+        "title": "Review Queue Size",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "review_queue_size",
+            "legendFormat": "{{priority}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "id": 9,
+        "title": "Reviews Submitted",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(reviews_submitted_total[5m])",
+            "legendFormat": "{{verdict}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8}
+      },
+      {
+        "id": 10,
+        "title": "A/B Test Assignments",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ab_test_assignments_total[5m])",
+            "legendFormat": "{{test_name}} - {{variant}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8}
+      },
+      {
+        "id": 11,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(errors_total[5m])",
+            "legendFormat": "{{error_type}} - {{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 28, "w": 12, "h": 8}
+      },
+      {
+        "id": 12,
+        "title": "Model Inference Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(model_inference_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(model_inference_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(model_inference_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 28, "w": 12, "h": 8}
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    }
+  }
+}
