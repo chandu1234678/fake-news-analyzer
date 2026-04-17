@@ -13,6 +13,7 @@ from app.routes.history_routes import router as history_router
 from app.routes.stats_routes import router as stats_router
 from app.routes.explain_routes import router as explain_router
 from app.routes.review_routes import router as review_router
+from app.routes.ab_routes import router as ab_router
 from app.health import router as health_router
 from app.middleware import SecurityMiddleware
 
@@ -104,5 +105,6 @@ app.include_router(history_router)
 app.include_router(stats_router)
 app.include_router(explain_router)
 app.include_router(review_router)
+app.include_router(ab_router)
 app.include_router(health_router)
 app.include_router(router)
