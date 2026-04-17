@@ -1207,3 +1207,226 @@ textarea#input-text::-webkit-scrollbar { display: none; }
 .friction-banner-close .material-symbols-outlined {
   font-size: 16px !important;
 }
+
+/* ── Phase 4.1: SHAP Explainability Styles ─────────────────── */
+
+/* SHAP badge indicator */
+.shap-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  background: rgba(192,193,255,0.12);
+  color: var(--accent);
+  border: 1px solid rgba(192,193,255,0.25);
+}
+
+/* SHAP highlight tags - Fake signals (red spectrum) */
+.shap-fake-high {
+  background: rgba(248,113,113,0.20);
+  color: #f87171;
+  border: 1px solid rgba(248,113,113,0.4);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: default;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+
+.shap-fake-high:hover {
+  background: rgba(248,113,113,0.28);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(248,113,113,0.3);
+}
+
+.shap-fake-med {
+  background: rgba(252,165,165,0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(252,165,165,0.3);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: default;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+
+.shap-fake-med:hover {
+  background: rgba(252,165,165,0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(252,165,165,0.25);
+}
+
+.shap-fake-low {
+  background: rgba(254,202,202,0.12);
+  color: #fecaca;
+  border: 1px solid rgba(254,202,202,0.25);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: default;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+
+.shap-fake-low:hover {
+  background: rgba(254,202,202,0.18);
+  transform: translateY(-1px);
+}
+
+/* SHAP highlight tags - Real signals (green spectrum) */
+.shap-real-high {
+  background: rgba(110,231,183,0.18);
+  color: #6ee7b7;
+  border: 1px solid rgba(110,231,183,0.35);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: default;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+
+.shap-real-high:hover {
+  background: rgba(110,231,183,0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(110,231,183,0.3);
+}
+
+.shap-real-med {
+  background: rgba(134,239,172,0.15);
+  color: #86efac;
+  border: 1px solid rgba(134,239,172,0.3);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: default;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+
+.shap-real-med:hover {
+  background: rgba(134,239,172,0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(134,239,172,0.25);
+}
+
+.shap-real-low {
+  background: rgba(187,247,208,0.12);
+  color: #bbf7d0;
+  border: 1px solid rgba(187,247,208,0.25);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: default;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+
+.shap-real-low:hover {
+  background: rgba(187,247,208,0.18);
+  transform: translateY(-1px);
+}
+
+/* SHAP explanation note */
+.shap-note {
+  font-size: 10px;
+  color: var(--t3);
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(192,193,255,0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(192,193,255,0.1);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* SHAP summary section (for future use) */
+.shap-summary {
+  background: var(--s2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shap-summary-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shap-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--b1);
+}
+
+.shap-summary-row:last-child {
+  border-bottom: none;
+}
+
+.shap-summary-label {
+  color: var(--t2);
+}
+
+.shap-summary-value {
+  font-weight: 600;
+  color: var(--t1);
+}
+
+/* Tooltip for SHAP highlights (optional enhancement) */
+.hl-tag[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--s0);
+  color: var(--t1);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 100;
+  margin-bottom: 4px;
+  border: 1px solid var(--b2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+/* Animation for SHAP highlights appearing */
+@keyframes shap-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hl-tag {
+  animation: shap-fade-in 0.3s ease;
+}

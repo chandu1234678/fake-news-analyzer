@@ -584,6 +584,8 @@ def message(
         "manipulation_score": manip_score,
         "manipulation_signals": manip_signals,
         "highlights": highlights,
+        "shap_highlights": highlights if explanation_type == "shap" else None,
+        "explanation_type": explanation_type if 'explanation_type' in locals() else "heuristic",
         "sub_claims": sub_claims if len(sub_claims) > 1 else None,
         "primary_claim": primary_claim if len(sub_claims) > 1 else None,
         "verdict_changed": verdict_changed,

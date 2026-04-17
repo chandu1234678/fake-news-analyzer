@@ -96,11 +96,30 @@ function render(data) {
     content.appendChild(manip);
   }
 
-  // ── Highlighted suspicious phrases ────────────────────────
-  if (data.highlights?.length) {
+  // ── SHAP Explainability Card ──────────────────────────────
+  if (data.shap_highlights?.length || data.highlights?.length) {
     const hlEl = document.createElement("div");
     hlEl.className = "card";
-    const tags = data.highlights.map(h => {
+    
+    // Use SHAP highlights if available, otherwise fallback to heuristic
+    const highlights = data.shap_highlights || data.highlights;
+    const isShap = !!data.shap_highlights;
+    const explType = data.explanation_type || (isShap ? "shap" : "heuristic");
+    
+    const tags = highlights.map(h => {
+      // SHAP-based styling
+      if (h.direction) {
+        const isFake = h.direction === "fake";
+        const importance = Math.abs(h.importance || 0);
+        const cls = isFake 
+          ? (importance >= 0.3 ? "shap-fake-high" : importance >= 0.15 ? "shap-fake-med" : "shap-fake-low")
+          : (importance >= 0.3 ? "shap-real-high" : importance >= 0.15 ? "shap-real-med" : "shap-real-low");
+        const tip = h.explanation || (isFake ? "Indicates misinformation" : "Supports credibility");
+        const icon = isFake ? "⚠️" : "✓";
+        return `<span class="hl-tag ${cls}" title="${esc(tip)}">${icon} ${esc(h.phrase)}</span>`;
+      }
+      
+      // Heuristic fallback styling
       const cls = h.score >= 0.75 ? "hl-high" : h.score >= 0.5 ? "hl-med" : "hl-low";
       const tip = h.reason === "sensational" ? "Sensational language"
                 : h.reason === "emotional"   ? "Emotional language"
@@ -108,12 +127,23 @@ function render(data) {
                 : "ML signal";
       return `<span class="hl-tag ${cls}" title="${tip}">${esc(h.phrase)}</span>`;
     }).join("");
+    
+    const titleIcon = isShap ? "psychology" : "flag";
+    const titleText = isShap ? "AI Explanation (SHAP)" : "Suspicious phrases";
+    const methodBadge = isShap 
+      ? `<span class="shap-badge" title="Explainable AI using SHAP values">SHAP</span>`
+      : "";
+    
     hlEl.innerHTML = `
-      <div class="card-title" style="display:flex;align-items:center;gap:4px">
-        <span class="material-symbols-outlined ms-12">flag</span>
-        Suspicious phrases
+      <div class="card-title" style="display:flex;align-items:center;gap:6px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="material-symbols-outlined ms-12">${titleIcon}</span>
+          ${titleText}
+        </div>
+        ${methodBadge}
       </div>
-      <div class="hl-tags">${tags}</div>`;
+      <div class="hl-tags">${tags}</div>
+      ${isShap ? `<div class="shap-note">These phrases were identified by analyzing how the AI model made its decision.</div>` : ""}`;
     content.appendChild(hlEl);
   }
 
