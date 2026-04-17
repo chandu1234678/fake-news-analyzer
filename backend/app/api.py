@@ -647,5 +647,19 @@ def message(
             })
         except Exception as e:
             logger.warning("Failed to save assistant message: %s", e)
+    
+    # ── WebSocket notification ────────────────────────────────
+    if user:
+        from app.websocket import notify_claim_verified
+        import asyncio
+        try:
+            # Create task to send notification without blocking response
+            asyncio.create_task(notify_claim_verified(user.id, {
+                "verdict": verdict,
+                "confidence": confidence,
+                "claim_text": primary_claim[:200]
+            }))
+        except Exception as e:
+            logger.debug(f"WebSocket notification skipped: {e}")
 
     return result

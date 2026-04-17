@@ -1778,3 +1778,72 @@ textarea#input-text::-webkit-scrollbar { display: none; }
   padding: 40px 20px;
   text-align: center;
 }
+
+/* ── WebSocket Connection Indicator ─────────────────────────── */
+.ws-status {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-size: 11px;
+  color: var(--t2);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.ws-status.visible {
+  opacity: 1;
+}
+
+.ws-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--t3);
+  animation: ws-pulse 2s ease-in-out infinite;
+}
+
+.ws-status.connected .ws-status-dot {
+  background: var(--real);
+  animation: none;
+}
+
+.ws-status.connecting .ws-status-dot {
+  background: var(--warn);
+}
+
+.ws-status.reconnecting .ws-status-dot {
+  background: var(--warn);
+  animation: ws-pulse 1s ease-in-out infinite;
+}
+
+.ws-status.disconnected .ws-status-dot {
+  background: var(--t3);
+  animation: none;
+}
+
+@keyframes ws-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.ws-status-text {
+  font-weight: 500;
+}
+
+/* Show status indicator on hover or when not connected */
+.ws-status:hover,
+.ws-status.connecting,
+.ws-status.reconnecting,
+.ws-status.disconnected {
+  pointer-events: auto;
+  opacity: 1;
+}

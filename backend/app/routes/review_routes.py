@@ -197,6 +197,14 @@ def submit_review(
     
     db.commit()
     
+    # ── WebSocket notification ────────────────────────────────
+    from app.websocket import notify_review_queue_update
+    import asyncio
+    try:
+        asyncio.create_task(notify_review_queue_update("all"))
+    except Exception as e:
+        logger.debug(f"WebSocket notification skipped: {e}")
+    
     return {
         "success": True,
         "message": "Review submitted successfully",

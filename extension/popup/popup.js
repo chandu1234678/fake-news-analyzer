@@ -1184,3 +1184,64 @@ function autoResize() {
   inputText.style.height = "auto";
   inputText.style.height = Math.min(inputText.scrollHeight, 88) + "px";
 }
+
+
+// ── WebSocket Status Indicator ────────────────────────────────
+function updateWSStatus() {
+  const statusEl = document.getElementById('ws-status');
+  if (!statusEl) return;
+  
+  const state = wsManager.getState();
+  const textEl = statusEl.querySelector('.ws-status-text');
+  
+  // Remove all state classes
+  statusEl.classList.remove('connected', 'connecting', 'reconnecting', 'disconnected');
+  
+  // Add current state class
+  statusEl.classList.add(state);
+  
+  // Update text
+  switch (state) {
+    case 'connected':
+      textEl.textContent = 'Live';
+      statusEl.classList.add('visible');
+      // Hide after 2 seconds when connected
+      setTimeout(() => {
+        if (wsManager.getState() === 'connected') {
+          statusEl.classList.remove('visible');
+        }
+      }, 2000);
+      break;
+    case 'connecting':
+      textEl.textContent = 'Connecting...';
+      statusEl.classList.add('visible');
+      break;
+    case 'reconnecting':
+      textEl.textContent = 'Reconnecting...';
+      statusEl.classList.add('visible');
+      break;
+    case 'disconnected':
+      textEl.textContent = 'Offline';
+      statusEl.classList.add('visible');
+      break;
+  }
+}
+
+// Register WebSocket state change handler
+if (typeof wsManager !== 'undefined') {
+  wsManager.onStateChange(updateWSStatus);
+  
+  // Initial status update
+  setTimeout(updateWSStatus, 100);
+  
+  // Register custom message handlers
+  wsManager.on('claim_verified', (message) => {
+    console.log('[Popup] Claim verified notification:', message);
+    // Could show a toast notification here
+  });
+  
+  wsManager.on('review_queue_update', (message) => {
+    console.log('[Popup] Review queue updated:', message);
+    // Reload review queue if on review page
+  });
+}
