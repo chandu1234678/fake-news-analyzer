@@ -17,6 +17,7 @@ from app.routes.ab_routes import router as ab_router
 from app.routes.metrics_routes import router as metrics_router
 from app.routes.websocket_routes import router as websocket_router
 from app.routes.cache_routes import router as cache_router
+from app.routes.quota_routes import router as quota_router
 from app.health import router as health_router
 from app.middleware import SecurityMiddleware
 
@@ -102,6 +103,10 @@ app.add_middleware(
 # ── Security middleware (rate limiting + headers) ─────────────
 app.add_middleware(SecurityMiddleware)
 
+# ── Rate limit headers middleware ─────────────────────────────
+from app.rate_limit import add_rate_limit_headers
+app.middleware("http")(add_rate_limit_headers)
+
 # ── Routers ───────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(history_router)
@@ -112,5 +117,6 @@ app.include_router(ab_router)
 app.include_router(metrics_router)
 app.include_router(websocket_router)
 app.include_router(cache_router)
+app.include_router(quota_router)
 app.include_router(health_router)
 app.include_router(router)

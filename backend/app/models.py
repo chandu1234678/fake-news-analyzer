@@ -14,6 +14,7 @@ class User(Base):
     hashed_pw  = Column(String, nullable=True)
     google_id  = Column(String, unique=True, nullable=True, index=True)
     is_active  = Column(Boolean, default=True)
+    tier       = Column(String, default="free", nullable=False)  # free, pro, enterprise
     created_at = Column(DateTime, default=datetime.utcnow)
 
     sessions  = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")

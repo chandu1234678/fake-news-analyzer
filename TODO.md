@@ -242,18 +242,18 @@
 **Status**: 🔄 PARTIAL - ONNX export and browser inference ready, offline mode UI pending
 
 ### P5.4 — API Rate Limiting & Quotas
-- [ ] 267. Implement per-user rate limits (tiered: free, pro, enterprise)
-- [ ] 268. Add per-endpoint rate limits
-- [ ] 269. Implement sliding window algorithm
-- [ ] 270. Add rate limit headers (X-RateLimit-*)
-- [ ] 271. Rate limit exceeded responses
-- [ ] 272. Monthly claim verification quotas
-- [ ] 273. API call quotas by tier
-- [ ] 274. Quota tracking in database
-- [ ] 275. Quota reset scheduling
-- [ ] 276. Quota exceeded notifications
+- [x] 267. Implement per-user rate limits (tiered: free, pro, enterprise)
+- [x] 268. Add per-endpoint rate limits
+- [x] 269. Implement sliding window algorithm
+- [x] 270. Add rate limit headers (X-RateLimit-*)
+- [x] 271. Rate limit exceeded responses
+- [x] 272. Monthly claim verification quotas
+- [x] 273. API call quotas by tier
+- [x] 274. Quota tracking in database
+- [x] 275. Quota reset scheduling
+- [x] 276. Quota exceeded notifications
 
-**Status**: ⏳ NOT STARTED
+**Status**: ✅ COMPLETE! Redis-based rate limiting with sliding window, tiered quotas, usage tracking, and upgrade flows.
 
 ### P5.5 — Advanced Analytics & Insights
 - [ ] 277. Topic clustering over time
