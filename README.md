@@ -15,8 +15,23 @@
   <img src="https://img.shields.io/badge/Chrome-MV3-yellow" />
   <img src="https://img.shields.io/badge/Model-DeBERTa--v3-blue" />
   <img src="https://img.shields.io/badge/Accuracy-96.63%25-brightgreen" />
+  <img src="https://img.shields.io/badge/Production-Ready-success" />
   <img src="https://img.shields.io/badge/License-MIT-lightgrey" />
 </p>
+
+---
+
+## 🎉 NEW: Phase 4 Production Features
+
+**FactChecker AI is now production-ready!** Recent additions include:
+
+- ✅ **SHAP Explainability** - Visual AI explanations showing which words triggered the verdict
+- ✅ **Review Queue** - Human-in-the-loop interface for uncertain claims (active learning)
+- ✅ **A/B Testing** - Framework for testing model versions and configurations
+- ✅ **Monitoring** - 20+ Prometheus metrics + Grafana dashboard
+- ✅ **Deployment** - Complete guides for Render, HuggingFace, and Docker
+
+[See Phase 4 Complete Summary →](PHASE4_COMPLETE.md)
 
 ---
 
@@ -34,6 +49,10 @@ Google AI summarizes what the internet says. FactChecker AI verifies whether the
 | Verdict change tracking over time | ✗ | ✓ |
 | Adversarial robustness testing | ✗ | ✓ |
 | User feedback learning loop | ✗ | ✓ |
+| **SHAP Explainability** | ✗ | ✓ |
+| **Human Review Queue** | ✗ | ✓ |
+| **A/B Testing Framework** | ✗ | ✓ |
+| **Production Monitoring** | ✗ | ✓ |
 
 ---
 
@@ -217,22 +236,30 @@ fake-news-analyzer/
 │   │   │   ├── credibility.py     # Dynamic source trust scoring (50+ domains)
 │   │   │   ├── drift.py           # Prediction distribution drift detection
 │   │   │   ├── evidence.py        # NewsAPI + stance scoring + trust weighting
-│   │   │   ├── highlight.py       # Suspicious phrase extraction
+│   │   │   ├── highlight.py       # SHAP + heuristic phrase highlighting
 │   │   │   ├── manipulation.py    # Emotional/sensational language detection
-│   │   │   └── ml.py              # TF-IDF model inference
+│   │   │   ├── ml.py              # TF-IDF model inference
+│   │   │   ├── shap_explainer.py  # SHAP explainability (Phase 4.1)
+│   │   │   ├── attention_extractor.py # Transformer attention weights
+│   │   │   └── ab_testing.py      # A/B test integration helpers
 │   │   ├── logic/
 │   │   │   └── decision.py        # Meta-model + uncertainty gate + heuristic fallback
 │   │   ├── routes/
 │   │   │   ├── auth_routes.py     # JWT + Google OAuth + OTP password reset
 │   │   │   ├── history_routes.py  # Chat session CRUD
-│   │   │   └── stats_routes.py    # Model metrics + drift + credibility dashboard
+│   │   │   ├── stats_routes.py    # Model metrics + drift + credibility dashboard
+│   │   │   ├── explain_routes.py  # SHAP explanation endpoint (Phase 4.1)
+│   │   │   ├── review_routes.py   # Review queue for active learning (Phase 4.2)
+│   │   │   ├── ab_routes.py       # A/B testing management (Phase 4.3)
+│   │   │   └── metrics_routes.py  # Prometheus metrics (Phase 4.4)
 │   │   ├── api.py                 # /message endpoint (parallel pipeline + rate limit)
 │   │   ├── auth.py                # JWT + Google OAuth helpers
 │   │   ├── email_utils.py         # Brevo HTTP API
 │   │   ├── health.py              # /health with model version + drift stats
 │   │   ├── main.py                # FastAPI app
-│   │   ├── models.py              # User, Session, Message, Feedback, ClaimRecord
-│   │   └── schemas.py             # Pydantic schemas
+│   │   ├── models.py              # User, Session, Message, Feedback, ClaimRecord, ABTest
+│   │   ├── schemas.py             # Pydantic schemas
+│   │   └── monitoring.py          # Prometheus metrics (Phase 4.4)
 │   ├── data/
 │   │   ├── model.joblib           # Trained + calibrated classifier
 │   │   ├── vectorizer.joblib      # TF-IDF vectorizer
@@ -254,17 +281,21 @@ fake-news-analyzer/
 │   │   └── service_worker.js
 │   ├── popup/
 │   │   ├── config.js              # API base URL (edit for local dev)
-│   │   ├── shared.css             # Full design system
+│   │   ├── shared.css             # Full design system + Phase 4 styles
 │   │   ├── popup.html/js          # Main chat + fact-check UI
 │   │   ├── login.html/js          # Auth (email + Google OAuth + OTP reset)
 │   │   ├── dashboard.html/js      # Model metrics + drift + credibility
-│   │   ├── detail.html/js         # Full claim detail + all signals
+│   │   ├── detail.html/js         # Full claim detail + SHAP highlights (Phase 4.1)
+│   │   ├── review.html/js         # Review queue for active learning (Phase 4.2)
 │   │   ├── history.html/js        # Chat session history
 │   │   ├── saved.html/js          # Saved claims with badges
 │   │   └── settings.html/js       # Profile + preferences
 │   ├── content.js                 # Context menu text selection
 │   └── manifest.json              # Chrome MV3 (v2.0.0)
 ├── render.yaml
+├── DEPLOYMENT_GUIDE.md           # Complete deployment guide (Phase 4.4)
+├── PHASE4_COMPLETE.md             # Phase 4 summary
+├── PHASE4_PROGRESS.md             # Detailed Phase 4 tracking
 ├── LICENSE
 └── README.md
 ```
@@ -379,6 +410,16 @@ sequenceDiagram
 | GET | `/credibility` | Source trust scores |
 | GET | `/stats/system` | Model + drift + credibility dashboard data |
 | GET | `/stats/calibration` | Calibration + adversarial metrics |
+| **POST** | **`/explain`** | **SHAP explanation for claim (Phase 4.1)** |
+| **GET** | **`/review/queue`** | **Get uncertain claims for review (Phase 4.2)** |
+| **POST** | **`/review/submit`** | **Submit human review (Phase 4.2)** |
+| **GET** | **`/review/stats`** | **Review queue statistics (Phase 4.2)** |
+| **POST** | **`/ab/tests`** | **Create A/B test (Phase 4.3)** |
+| **GET** | **`/ab/assign`** | **Get variant assignment (Phase 4.3)** |
+| **POST** | **`/ab/track`** | **Track A/B test event (Phase 4.3)** |
+| **GET** | **`/ab/results/{id}`** | **View A/B test results (Phase 4.3)** |
+| **GET** | **`/metrics`** | **Prometheus metrics (Phase 4.4)** |
+| **GET** | **`/health/metrics`** | **Health check with metrics (Phase 4.4)** |
 
 ---
 
@@ -402,12 +443,26 @@ sequenceDiagram
 
 This system goes beyond standard fake news classifiers:
 
+- **SHAP Explainability** — Token-level importance scores show which words triggered the verdict (Phase 4.1)
+- **Active Learning** — Human review queue for uncertain claims enables continuous improvement (Phase 4.2)
+- **A/B Testing** — Built-in framework for testing model versions with consistent hashing (Phase 4.3)
+- **Production Monitoring** — 20+ Prometheus metrics + Grafana dashboard for observability (Phase 4.4)
 - Learned decision fusion — meta-model trained on ML + AI + evidence scores replaces hand-written weights
 - Trust-weighted evidence consistency — source credibility scores weight the consensus calculation
 - Calibrated confidence — isotonic regression ensures stated confidence matches empirical accuracy
 - Adversarial robustness evaluation — LLM-generated paraphrases, partial truths, misleading frames
 - Temporal verdict tracking — detects when the same claim's verdict changes over time
 - Prediction drift monitoring — rolling distribution tracker with automatic alert threshold
+
+---
+
+## Documentation
+
+- **[Quick Start Guide](QUICK_START.md)** - Get started in 5 minutes
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Production deployment (Render, HuggingFace, Docker)
+- **[Phase 4 Summary](PHASE4_COMPLETE.md)** - Production hardening features
+- **[Training Guide](TRAINING_GUIDE.md)** - Model training and evaluation
+- **[API Documentation](COMPREHENSIVE_REVIEW.md)** - Complete technical review
 
 ---
 
