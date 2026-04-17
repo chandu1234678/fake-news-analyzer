@@ -1430,3 +1430,351 @@ textarea#input-text::-webkit-scrollbar { display: none; }
 .hl-tag {
   animation: shap-fade-in 0.3s ease;
 }
+
+/* ── Phase 4.2: Review Queue Styles ─────────────────────────── */
+
+/* Stats bar */
+.review-stats-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--b1);
+}
+
+.review-stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.review-stat-num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.review-stat-label {
+  font-size: 9px;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Filter tabs */
+.review-filters {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--b1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.review-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.review-filter-btn {
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--b1);
+  background: var(--s1);
+  color: var(--t2);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.review-filter-btn:hover {
+  background: var(--s2);
+  color: var(--t1);
+}
+
+.review-filter-btn.active {
+  background: var(--a-dim);
+  border-color: var(--a-bdr);
+  color: var(--accent);
+}
+
+/* Review card */
+.review-card {
+  background: var(--s1);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  transition: all 0.3s ease;
+  border: 1px solid var(--b1);
+}
+
+.review-card-reviewed {
+  opacity: 0.6;
+  border-color: var(--real);
+  background: rgba(110,231,183,0.05);
+}
+
+.review-card-submitted {
+  background: rgba(110,231,183,0.1);
+  border-color: var(--real);
+}
+
+.review-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.review-card-verdict {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.review-card-conf {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--t1);
+}
+
+/* Priority badges */
+.review-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.priority-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
+.priority-viral {
+  background: rgba(252,165,165,0.15);
+  color: var(--fake);
+  border: 1px solid rgba(252,165,165,0.3);
+}
+
+.priority-trending {
+  background: rgba(252,211,77,0.12);
+  color: var(--warn);
+  border: 1px solid rgba(252,211,77,0.25);
+}
+
+.priority-cluster {
+  background: rgba(192,193,255,0.12);
+  color: var(--accent);
+  border: 1px solid rgba(192,193,255,0.25);
+}
+
+/* Claim text */
+.review-card-claim {
+  font-size: 12.5px;
+  color: var(--t1);
+  line-height: 1.6;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--s2);
+  border-radius: 7px;
+  border-left: 3px solid var(--accent);
+}
+
+/* Scores */
+.review-card-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.review-score-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-score-label {
+  font-size: 9px;
+  color: var(--t3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  width: 50px;
+  flex-shrink: 0;
+}
+
+.review-score-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--b1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.review-score-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.review-score-val {
+  font-size: 10px;
+  color: var(--t2);
+  font-weight: 600;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Review actions */
+.review-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.review-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--b1);
+  background: var(--s2);
+  color: var(--t2);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.review-btn:hover {
+  transform: translateY(-1px);
+}
+
+.review-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.review-btn-real {
+  border-color: rgba(110,231,183,0.3);
+  color: var(--real);
+}
+
+.review-btn-real:hover {
+  background: rgba(110,231,183,0.12);
+  border-color: rgba(110,231,183,0.5);
+}
+
+.review-btn-fake {
+  border-color: rgba(252,165,165,0.3);
+  color: var(--fake);
+}
+
+.review-btn-fake:hover {
+  background: rgba(252,165,165,0.12);
+  border-color: rgba(252,165,165,0.5);
+}
+
+.review-btn-skip {
+  flex: 0.6;
+  border-color: var(--b1);
+  color: var(--t3);
+}
+
+.review-btn-skip:hover {
+  background: var(--s3);
+  color: var(--t2);
+}
+
+/* Already reviewed note */
+.review-card-reviewed-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--real);
+  padding: 6px 8px;
+  background: rgba(110,231,183,0.08);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+/* Card meta */
+.review-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--t3);
+}
+
+/* Success state */
+.review-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Error message */
+.review-error {
+  font-size: 11px;
+  color: var(--fake);
+  background: rgba(252,165,165,0.1);
+  border: 1px solid rgba(252,165,165,0.25);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Loading state */
+.review-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+/* Error state */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}

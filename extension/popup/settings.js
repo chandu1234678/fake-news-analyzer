@@ -53,6 +53,6 @@ function nav(page) { window.location.href = chrome.runtime.getURL(`popup/${page}
 document.getElementById("back-btn").addEventListener("click",    () => nav("popup.html"));
 document.getElementById("bn-chat").addEventListener("click",      () => nav("popup.html"));
 document.getElementById("bn-dashboard").addEventListener("click", () => nav("dashboard.html"));
-document.getElementById("bn-saved").addEventListener("click",     () => nav("saved.html"));
+document.getElementById("bn-review").addEventListener("click",    () => nav("review.html"));
 document.getElementById("bn-history").addEventListener("click",   () => nav("history.html"));
 document.getElementById("bn-settings").addEventListener("click",  () => nav("settings.html"));
