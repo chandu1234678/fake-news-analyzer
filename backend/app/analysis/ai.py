@@ -148,9 +148,22 @@ def run_ai_analysis(text: str):
     """
     Runs Cerebras, Groq, Gemini in parallel.
     Returns structured verdict from the first successful provider.
+    Caches results for 1 hour to reduce API costs.
 
     Returns: (ai_fake_score: float | None, explanation: str)
     """
+    # Try cache first
+    try:
+        from app.cache import partial_cache
+        cached = partial_cache.get_ai_score(text)
+        if cached is not None:
+            import logging
+            logging.getLogger(__name__).debug("AI analysis cache hit")
+            return cached.get("score"), cached.get("explanation", "")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug(f"Cache lookup failed: {e}")
+    
     result, errors = _run_primaries_parallel(text)
 
     if result:
@@ -163,6 +176,15 @@ def run_ai_analysis(text: str):
         elif result.get("verdict") == "real":
             score = min(score, 1.0 - llm_conf * 0.95)
         explanation = result.get("explanation", "")
+        
+        # Cache the result
+        try:
+            from app.cache import partial_cache
+            partial_cache.set_ai_score(text, score, explanation)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).debug(f"Cache set failed: {e}")
+        
         return score, explanation
 
     error_summary = " | ".join(f"{k}: {v}" for k, v in errors.items())

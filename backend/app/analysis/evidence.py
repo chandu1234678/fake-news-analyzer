@@ -98,7 +98,22 @@ def fetch_evidence(text: str):
     """
     Primary entry point — tries Brave Search first, falls back to NewsAPI.
     Returns: (evidence_score, urls, articles)
+    Caches results for 1 hour to reduce API costs.
     """
+    # Try cache first
+    try:
+        from app.cache import partial_cache
+        cached = partial_cache.get_evidence(text)
+        if cached is not None:
+            logger.debug("Evidence cache hit")
+            return (
+                cached.get("score"),
+                cached.get("urls", []),
+                cached.get("articles", [])
+            )
+    except Exception as e:
+        logger.debug(f"Cache lookup failed: {e}")
+    
     # Try Brave first (real-time)
     if BRAVE_API_KEY:
         try:
@@ -106,12 +121,36 @@ def fetch_evidence(text: str):
             score, urls, articles = fetch_brave_evidence(text)
             if articles:
                 logger.debug("Evidence from Brave Search (%d articles)", len(articles))
+                # Cache the result
+                try:
+                    from app.cache import partial_cache
+                    partial_cache.set_evidence(text, {
+                        "score": score,
+                        "urls": urls,
+                        "articles": articles
+                    })
+                except Exception as e:
+                    logger.debug(f"Cache set failed: {e}")
                 return score, urls, articles
         except Exception as e:
             logger.warning("Brave Search failed, falling back to NewsAPI: %s", e)
 
     # Fallback to NewsAPI
-    return _fetch_newsapi_evidence(text)
+    score, urls, articles = _fetch_newsapi_evidence(text)
+    
+    # Cache the result
+    if score is not None:
+        try:
+            from app.cache import partial_cache
+            partial_cache.set_evidence(text, {
+                "score": score,
+                "urls": urls,
+                "articles": articles
+            })
+        except Exception as e:
+            logger.debug(f"Cache set failed: {e}")
+    
+    return score, urls, articles
 
 
 

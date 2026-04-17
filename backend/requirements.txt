@@ -36,3 +36,5 @@ snorkel>=0.10.0
 # Phase 4.1: SHAP Explainability
 shap>=0.45.0
 prometheus-client>=0.19.0
+redis>=5.0.0
+hiredis>=2.3.0

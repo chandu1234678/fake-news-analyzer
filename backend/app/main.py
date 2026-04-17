@@ -16,6 +16,7 @@ from app.routes.review_routes import router as review_router
 from app.routes.ab_routes import router as ab_router
 from app.routes.metrics_routes import router as metrics_router
 from app.routes.websocket_routes import router as websocket_router
+from app.routes.cache_routes import router as cache_router
 from app.health import router as health_router
 from app.middleware import SecurityMiddleware
 
@@ -110,5 +111,6 @@ app.include_router(review_router)
 app.include_router(ab_router)
 app.include_router(metrics_router)
 app.include_router(websocket_router)
+app.include_router(cache_router)
 app.include_router(health_router)
 app.include_router(router)

@@ -25,6 +25,15 @@ ROBERTA_MODEL   = os.getenv("DEBERTA_MODEL", _DEFAULT_MODEL)
 _roberta_pipe   = None
 _roberta_failed = False
 
+# ── Transformer model (primary) ───────────────────────────────
+# After training on Colab, set DEBERTA_MODEL=your-hf-username/factchecker-deberta
+# Falls back to the public RoBERTa model if not configured
+_DEFAULT_MODEL  = "jy46604790/Fake-News-Bert-Detect"
+ROBERTA_MODEL   = os.getenv("DEBERTA_MODEL", _DEFAULT_MODEL)
+
+_roberta_pipe   = None
+_roberta_failed = False
+
 
 def _load_roberta():
     global _roberta_pipe, _roberta_failed
@@ -130,13 +139,38 @@ def run_ml_analysis(text: str) -> dict:
     Returns {"fake": float, "source": "roberta"|"tfidf"|"default"}
 
     Tries RoBERTa first, falls back to TF-IDF, then returns 0.5 if both fail.
+    Caches results for 24 hours to reduce compute costs.
     """
+    # Try cache first
+    try:
+        from app.cache import partial_cache
+        cached = partial_cache.get_ml_score(text)
+        if cached is not None:
+            logger.debug("ML cache hit")
+            return {"fake": cached, "source": "cache"}
+    except Exception as e:
+        logger.debug(f"Cache lookup failed: {e}")
+    
+    # Compute score
     score = _roberta_score(text)
     if score is not None:
-        return {"fake": score, "source": "deberta" if "deberta" in ROBERTA_MODEL.lower() else "roberta"}
+        source = "deberta" if "deberta" in ROBERTA_MODEL.lower() else "roberta"
+        # Cache the result
+        try:
+            from app.cache import partial_cache
+            partial_cache.set_ml_score(text, score)
+        except Exception as e:
+            logger.debug(f"Cache set failed: {e}")
+        return {"fake": score, "source": source}
 
     score = _tfidf_score(text)
     if score is not None:
+        # Cache the result
+        try:
+            from app.cache import partial_cache
+            partial_cache.set_ml_score(text, score)
+        except Exception as e:
+            logger.debug(f"Cache set failed: {e}")
         return {"fake": score, "source": "tfidf"}
 
     logger.warning("Both ML models unavailable, returning default 0.5")
