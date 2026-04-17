@@ -18,6 +18,7 @@ from app.routes.metrics_routes import router as metrics_router
 from app.routes.websocket_routes import router as websocket_router
 from app.routes.cache_routes import router as cache_router
 from app.routes.quota_routes import router as quota_router
+from app.routes.analytics_routes import router as analytics_router
 from app.health import router as health_router
 from app.middleware import SecurityMiddleware
 
@@ -118,5 +119,6 @@ app.include_router(metrics_router)
 app.include_router(websocket_router)
 app.include_router(cache_router)
 app.include_router(quota_router)
+app.include_router(analytics_router)
 app.include_router(health_router)
 app.include_router(router)
