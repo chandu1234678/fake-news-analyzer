@@ -17,7 +17,7 @@ from app.analysis.chat import is_claim, run_chat
 from app.analysis.manipulation import analyze_manipulation
 from app.analysis.claim_extractor import extract_claims
 from app.analysis.drift import record as record_drift
-from app.analysis.highlight import get_highlights
+from app.analysis.highlight import get_highlights, get_highlights_with_shap
 from app.analysis.credibility import update_from_stance, get_all_scores
 from app.analysis.multilingual import normalize_claim
 from app.analysis.explainability import build_explanation
@@ -430,7 +430,31 @@ def message(
         logger.warning("Cooldown calculation failed: %s", e)
 
     # Highlighted suspicious phrases (after verdict is known)
-    highlights = get_highlights(text) if verdict == "fake" or manip_score > 0.2 else []
+    # Try SHAP-based highlighting first, fallback to heuristic
+    highlights = []
+    explanation_type = "heuristic"
+    
+    if verdict == "fake" or manip_score > 0.2:
+        try:
+            # Get model and vectorizer for SHAP
+            import joblib
+            model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "model.joblib")
+            vec_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "vectorizer.joblib")
+            
+            if os.path.exists(model_path) and os.path.exists(vec_path):
+                model = joblib.load(model_path)
+                vectorizer = joblib.load(vec_path)
+                
+                # Try SHAP-based highlighting with timeout
+                highlights, explanation_type = get_highlights_with_shap(
+                    text, model, vectorizer, model_type="tfidf", timeout_ms=500
+                )
+                logger.debug(f"Highlights generated using {explanation_type}")
+            else:
+                highlights = get_highlights(text)
+        except Exception as e:
+            logger.warning(f"SHAP highlighting failed: {e}, using fallback")
+            highlights = get_highlights(text)
 
     # Build evidence display: prefer article URLs, fallback to plain URLs
     display_evidence = (

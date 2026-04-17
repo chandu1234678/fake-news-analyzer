@@ -11,6 +11,7 @@ from app.api import router
 from app.routes.auth_routes import router as auth_router
 from app.routes.history_routes import router as history_router
 from app.routes.stats_routes import router as stats_router
+from app.routes.explain_routes import router as explain_router
 from app.health import router as health_router
 from app.middleware import SecurityMiddleware
 
@@ -100,5 +101,6 @@ app.add_middleware(SecurityMiddleware)
 app.include_router(auth_router)
 app.include_router(history_router)
 app.include_router(stats_router)
+app.include_router(explain_router)
 app.include_router(health_router)
 app.include_router(router)

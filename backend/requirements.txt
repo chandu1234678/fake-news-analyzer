@@ -33,3 +33,5 @@ praw>=7.7.0  # Reddit API
 tweepy>=4.14.0  # Twitter API (alternative to requests)
 # Phase 3: Self-Labeling Pipeline
 snorkel>=0.10.0
+# Phase 4.1: SHAP Explainability
+shap>=0.45.0

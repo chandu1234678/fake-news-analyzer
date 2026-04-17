@@ -83,3 +83,58 @@ class MessageResponse(BaseModel):
     # Explainability and moderation
     explainability: Optional[dict] = None
     moderation_summary: Optional[dict] = None
+
+
+# Phase 4.1: SHAP Explainability Schemas
+
+class ExplainRequest(BaseModel):
+    """Request for detailed SHAP explanation"""
+    text: str = Field(..., min_length=10, max_length=2000)
+    model_type: str = Field(default="auto", pattern="^(tfidf|transformer|auto)$")
+    include_attention: bool = Field(default=False)
+    num_samples: int = Field(default=100, ge=50, le=500)
+    
+    @field_validator("text")
+    @classmethod
+    def sanitize_text(cls, v):
+        return _sanitize(v)
+
+
+class TokenImportance(BaseModel):
+    """Token-level importance from SHAP"""
+    token: str
+    importance: float
+    position: int
+    direction: str  # "fake" or "real"
+    confidence: float
+
+
+class SHAPHighlight(BaseModel):
+    """SHAP-based highlight with explanation"""
+    phrase: str
+    importance: float
+    direction: str  # "fake" or "real"
+    position: dict  # {"start": int, "end": int}
+    confidence: float
+    explanation: str
+
+
+class ExplainResponse(BaseModel):
+    """Detailed SHAP explanation response"""
+    text: str
+    prediction: dict  # {"verdict": str, "confidence": float, "fake_probability": float}
+    shap_explanation: Optional[dict] = None
+    attention_weights: Optional[dict] = None
+    highlights: List[dict]
+    visualization_data: Optional[dict] = None
+    latency_ms: int
+    explanation_type: str  # "shap" or "heuristic"
+
+
+# Update MessageResponse to include SHAP fields
+class EnhancedMessageResponse(MessageResponse):
+    """Extended MessageResponse with SHAP explainability"""
+    shap_highlights: Optional[List[dict]] = None
+    shap_summary: Optional[dict] = None  # {"top_fake_signals": [...], "top_real_signals": [...]}
+    explanation_type: Optional[str] = None  # "shap" or "heuristic"
+    attention_weights: Optional[dict] = None
