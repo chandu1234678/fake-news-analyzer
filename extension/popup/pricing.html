@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upgrade Plan — PiNE AI</title>
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="pricing-wrap">
+
+  <header class="pricing-header">
+    <a id="back-btn" class="back-btn" aria-label="Go back">
+      <span class="material-symbols-outlined ms-20">arrow_back</span>
+    </a>
+    <h1>Choose Your Plan</h1>
+  </header>
+
+  <div class="pricing-body">
+
+    <!-- Current plan -->
+    <div class="current-plan-card">
+      <span class="material-symbols-outlined current-plan-icon">workspace_premium</span>
+      <div class="current-plan-info">
+        <div class="current-plan-label">Current Plan</div>
+        <div class="current-plan-name" id="current-plan-name">Free</div>
+        <div class="current-plan-quota" id="current-plan-quota">100 checks/month · 1 model</div>
+      </div>
+    </div>
+
+    <!-- Free plan -->
+    <div class="plan-card current" id="plan-free">
+      <div class="plan-header">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">
+          <div class="plan-price-amount">₹0</div>
+          <div class="plan-price-period">forever</div>
+        </div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          100 checks per month
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          1 AI model (Qwen3-8B)
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          Basic fact-checking
+        </div>
+        <div class="plan-feature dim">
+          <span class="material-symbols-outlined">cancel</span>
+          Multi-model ensemble
+        </div>
+      </div>
+      <button class="plan-btn plan-btn-current">Current Plan</button>
+    </div>
+
+    <!-- Starter plan -->
+    <div class="plan-card" id="plan-starter" data-plan="starter" data-price="99">
+      <div class="plan-header">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">
+          <div class="plan-price-amount">₹99</div>
+          <div class="plan-price-period">/month</div>
+        </div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          500 checks per month
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          2 AI models (Qwen3 + Groq)
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          2-model voting system
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          Priority support
+        </div>
+      </div>
+      <button class="plan-btn plan-btn-upgrade">Upgrade to Starter</button>
+    </div>
+
+    <!-- Pro plan (popular) -->
+    <div class="plan-card popular" id="plan-pro" data-plan="pro" data-price="499">
+      <div class="plan-popular-badge">Most Popular</div>
+      <div class="plan-header">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">
+          <div class="plan-price-amount">₹499</div>
+          <div class="plan-price-period">/month</div>
+        </div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          5,000 checks per month
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          4 AI models (Qwen3 + Groq + Gemini + Gemma4)
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          4-model ensemble voting
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          Advanced explainability (SHAP)
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          Priority support
+        </div>
+      </div>
+      <button class="plan-btn plan-btn-upgrade">Upgrade to Pro</button>
+    </div>
+
+    <!-- Enterprise plan -->
+    <div class="plan-card" id="plan-enterprise" data-plan="enterprise" data-price="2999">
+      <div class="plan-header">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-price">
+          <div class="plan-price-amount">₹2,999</div>
+          <div class="plan-price-period">/month</div>
+        </div>
+      </div>
+      <div class="plan-features">
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          Unlimited checks
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          5 AI models (includes MiniMax 229B)
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          5-model ensemble voting
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          Full explainability suite
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          Dedicated support
+        </div>
+        <div class="plan-feature">
+          <span class="material-symbols-outlined">check_circle</span>
+          API access
+        </div>
+      </div>
+      <button class="plan-btn plan-btn-upgrade">Upgrade to Enterprise</button>
+    </div>
+
+    <!-- Razorpay badge -->
+    <div class="razorpay-badge">
+      <span class="material-symbols-outlined ms-12">lock</span>
+      Secured by Razorpay
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Payment modal -->
+<div id="payment-modal-overlay" class="payment-modal-overlay" style="display:none">
+  <div class="payment-modal">
+    <div class="payment-modal-handle"></div>
+    <div class="payment-modal-title" id="modal-title">Confirm Upgrade</div>
+    <div class="payment-modal-sub" id="modal-sub">You're upgrading to Pro plan</div>
+    
+    <div class="payment-summary">
+      <div class="payment-summary-row">
+        <span class="label">Plan</span>
+        <span class="value" id="summary-plan">Pro</span>
+      </div>
+      <div class="payment-summary-row">
+        <span class="label">Billing cycle</span>
+        <span class="value">Monthly</span>
+      </div>
+      <div class="payment-divider"></div>
+      <div class="payment-summary-row total">
+        <span class="label">Total</span>
+        <span class="value" id="summary-total">₹499/month</span>
+      </div>
+    </div>
+
+    <button id="confirm-payment-btn" class="payment-btn">
+      <span class="material-symbols-outlined ms-16">credit_card</span>
+      Proceed to Payment
+    </button>
+    <button id="cancel-payment-btn" class="payment-cancel-btn">Cancel</button>
+
+    <div class="payment-secure-note">
+      <span class="material-symbols-outlined">lock</span>
+      Secure payment via Razorpay
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="pricing.js"></script>
+</body>
+</html>

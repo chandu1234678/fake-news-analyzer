@@ -9,19 +9,49 @@
 <div class="page-wrap">
 
   <header class="page-header">
-    <a id="back-btn" class="back-btn">
+    <a id="back-btn" class="back-btn" aria-label="Go back">
       <span class="material-symbols-outlined ms-20">arrow_back</span>
     </a>
     <h1>Dashboard</h1>
-    <div id="user-avatar" class="sidebar-avatar" style="width:26px;height:26px;font-size:11px">?</div>
+    <div id="user-avatar" class="sidebar-avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">?</div>
   </header>
 
   <div class="page-body">
 
-    <!-- Welcome -->
+    <!-- Welcome + tier -->
     <div class="card" style="margin-bottom:10px">
-      <div style="font-size:11px;color:var(--t3);margin-bottom:2px">Welcome back,</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+        <div style="font-size:11px;color:var(--t3)">Welcome back,</div>
+        <span id="user-tier-badge" class="tier-badge tier-free">Free</span>
+      </div>
       <div id="user-name" style="font-size:14px;font-weight:600;color:var(--t1)">Loading...</div>
+    </div>
+
+    <!-- Upgrade banner (shown for free/starter users) -->
+    <div id="upgrade-banner" class="upgrade-banner" style="display:none">
+      <span class="material-symbols-outlined upgrade-banner-icon">workspace_premium</span>
+      <div class="upgrade-banner-text">
+        <div class="upgrade-banner-title">Upgrade to Pro</div>
+        <div class="upgrade-banner-sub">4-model ensemble · 5,000 checks/month</div>
+      </div>
+      <span class="material-symbols-outlined upgrade-banner-arrow">chevron_right</span>
+    </div>
+
+    <!-- Quota bar -->
+    <div class="card" style="margin-bottom:10px" id="quota-card">
+      <div class="card-title" style="display:flex;align-items:center;gap:4px;margin-bottom:8px">
+        <span class="material-symbols-outlined ms-12">data_usage</span>
+        Monthly Usage
+      </div>
+      <div class="quota-bar-wrap">
+        <div class="quota-bar-row">
+          <span class="quota-bar-label">Checks used</span>
+          <span class="quota-bar-count" id="quota-count">— / —</span>
+        </div>
+        <div class="quota-track">
+          <div class="quota-fill" id="quota-fill" style="width:0%"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Verdict stats -->
@@ -104,18 +134,17 @@
 
   </div>
 
-  <nav class="bottom-nav">
-    <a id="bn-chat"><span class="material-symbols-outlined">chat</span>Chat</a>
-    <a id="bn-dashboard" class="active"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
-    <a id="bn-review"><span class="material-symbols-outlined">fact_check</span>Review</a>
-    <a id="bn-history"><span class="material-symbols-outlined">history</span>History</a>
-    <a id="bn-settings"><span class="material-symbols-outlined">settings</span>Settings</a>
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <a id="bn-chat" aria-label="Chat"><span class="material-symbols-outlined">chat</span>Chat</a>
+    <a id="bn-dashboard" class="active" aria-label="Dashboard" aria-current="page"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a id="bn-review" aria-label="Review"><span class="material-symbols-outlined">fact_check</span>Review</a>
+    <a id="bn-history" aria-label="History"><span class="material-symbols-outlined">history</span>History</a>
+    <a id="bn-settings" aria-label="Settings"><span class="material-symbols-outlined">settings</span>Settings</a>
   </nav>
 
 </div>
 
-<!-- WebSocket Status Indicator -->
-<div class="ws-status" id="ws-status">
+<div class="ws-status" id="ws-status" aria-live="polite">
   <div class="ws-status-dot"></div>
   <span class="ws-status-text">Live</span>
 </div>

@@ -109,7 +109,7 @@ def submit_feedback(
     return {"message": "Feedback recorded. Thank you."}
 
 
-def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
+def _run_pipeline_parallel(text: str, image_url: str = None, db=None, user=None):
     """Run ML, AI, evidence in parallel. Image/platform only if configured."""
     results = {
         "ml": None, "ai": (None, ""), "evidence": (None, [], []),
@@ -117,7 +117,8 @@ def _run_pipeline_parallel(text: str, image_url: str = None, db=None):
     }
 
     def do_ml():       return run_ml_analysis(text)
-    def do_ai():       return run_ai_analysis(text)
+    user_tier = getattr(user, "tier", "free") if user else "anonymous"
+    def do_ai():       return run_ai_analysis(text, user_tier=user_tier)
     def do_evidence(): return fetch_evidence(text)
 
     # Only run image check if an image was explicitly provided
@@ -251,7 +252,7 @@ def message(
     primary_claim = sub_claims[0]
 
     # ── Run core pipeline (3 workers max for 512MB RAM) ───────
-    pipeline = _run_pipeline_parallel(primary_claim, image_url=req.image_url, db=db)
+    pipeline = _run_pipeline_parallel(primary_claim, image_url=req.image_url, db=db, user=user)
 
     ml_result = pipeline["ml"] or {"fake": 0.5}
     raw_ai_score, explanation = pipeline["ai"] if pipeline["ai"] else (None, "")
@@ -471,6 +472,7 @@ def message(
     claim_hash = hashlib.sha256(primary_claim.lower().strip().encode()).hexdigest()
     try:
         db.add(ClaimRecord(
+            user_id=user.id if user else None,
             claim_hash=claim_hash,
             claim_text=primary_claim[:500],
             verdict=verdict,

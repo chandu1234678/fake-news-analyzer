@@ -19,6 +19,7 @@ class User(Base):
 
     sessions  = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
     feedbacks = relationship("UserFeedback", back_populates="user", cascade="all, delete-orphan")
+    claims    = relationship("ClaimRecord", back_populates="user")
 
 
 class PasswordResetOTP(Base):
@@ -83,12 +84,17 @@ class UserFeedback(Base):
 
     user = relationship("User", back_populates="feedbacks")
 
+    __table_args__ = (
+        Index("ix_user_feedback_user_created", "user_id", "created_at"),
+    )
+
 
 class ClaimRecord(Base):
     """Tracks every claim verification — enables temporal analysis."""
     __tablename__ = "claim_records"
 
     id             = Column(Integer, primary_key=True, index=True)
+    user_id        = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     claim_hash     = Column(String(64), nullable=False)
     claim_text     = Column(Text, nullable=False)
     verdict        = Column(String, nullable=False)
@@ -98,8 +104,11 @@ class ClaimRecord(Base):
     evidence_score = Column(Float, nullable=True)
     created_at     = Column(DateTime, default=datetime.utcnow, index=True)
 
+    user = relationship("User", back_populates="claims")
+
     __table_args__ = (
         Index("ix_claim_records_hash_created", "claim_hash", "created_at"),
+        Index("ix_claim_records_user_created", "user_id", "created_at"),
     )
 
 

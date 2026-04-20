@@ -9,29 +9,28 @@
 <div class="page-wrap">
 
   <header class="page-header">
-    <a id="back-btn" class="back-btn">
+    <a id="back-btn" class="back-btn" aria-label="Go back">
       <span class="material-symbols-outlined ms-20">arrow_back</span>
     </a>
     <h1>Chat History</h1>
-    <button id="clear-btn" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--fake);font-family:Inter,sans-serif;padding:4px 6px;border-radius:6px;transition:opacity 0.15s">Clear All</button>
+    <button id="clear-btn" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--fake);font-family:Inter,sans-serif;padding:4px 8px;border-radius:6px;transition:opacity 0.15s" aria-label="Clear all history">Clear All</button>
   </header>
 
   <div class="page-body" id="sessions-list">
     <div style="font-size:12px;color:var(--t3);text-align:center;padding:32px 0">Loading...</div>
   </div>
 
-  <nav class="bottom-nav">
-    <a id="bn-chat"><span class="material-symbols-outlined">chat</span>Chat</a>
-    <a id="bn-dashboard"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
-    <a id="bn-review"><span class="material-symbols-outlined">fact_check</span>Review</a>
-    <a id="bn-history" class="active"><span class="material-symbols-outlined">history</span>History</a>
-    <a id="bn-settings"><span class="material-symbols-outlined">settings</span>Settings</a>
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <a id="bn-chat" aria-label="Chat"><span class="material-symbols-outlined">chat</span>Chat</a>
+    <a id="bn-dashboard" aria-label="Dashboard"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a id="bn-review" aria-label="Review"><span class="material-symbols-outlined">fact_check</span>Review</a>
+    <a id="bn-history" class="active" aria-label="History" aria-current="page"><span class="material-symbols-outlined">history</span>History</a>
+    <a id="bn-settings" aria-label="Settings"><span class="material-symbols-outlined">settings</span>Settings</a>
   </nav>
 
 </div>
 
-<!-- WebSocket Status Indicator -->
-<div class="ws-status" id="ws-status">
+<div class="ws-status" id="ws-status" aria-live="polite">
   <div class="ws-status-dot"></div>
   <span class="ws-status-text">Live</span>
 </div>

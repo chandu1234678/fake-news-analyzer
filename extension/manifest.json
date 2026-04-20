@@ -1,13 +1,51 @@
 {
   "manifest_version": 3,
-  "name": "FactChecker AI",
-  "version": "2.0.0",
-  "description": "Real-time fake news detection with AI",
-  "permissions": ["storage", "activeTab", "contextMenus", "identity", "windows", "scripting", "tabs", "alarms"],
+  "name": "PiNE AI",
+  "version": "2.6.1",
+  "description": "PiNE AI — Real-time fake news detection powered by AI",
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "contextMenus",
+    "identity",
+    "windows",
+    "scripting",
+    "tabs",
+    "alarms",
+    "notifications",
+    "sidePanel"
+  ],
+
+  "commands": {
+    "open-factchecker": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Open PiNE AI popup"
+    },
+    "analyze-selected-text": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      },
+      "description": "Fact-check selected text on the current page"
+    },
+    "analyze-current-page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "Fact-check visible text from the current page"
+    }
+  },
+
   "oauth2": {
     "client_id": "595122585703-1geqe1e5uqd0lt4emf95kel6hsa3r64c.apps.googleusercontent.com",
     "scopes": ["openid", "email", "profile"]
   },
+
   "host_permissions": [
     "http://127.0.0.1:8000/*",
     "http://localhost:8000/*",
@@ -19,44 +57,56 @@
     "https://www.googleapis.com/*",
     "https://oauth2.googleapis.com/*"
   ],
+
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src https://fake-news-analyzer-j6ka.onrender.com http://127.0.0.1:8000 http://localhost:8000 https://*.onrender.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com"
+    "extension_pages": "default-src 'self'; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src https://fake-news-analyzer-j6ka.onrender.com http://127.0.0.1:8000 http://localhost:8000 https://*.onrender.com https://*.railway.app https://*.fly.dev https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com"
   },
+
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
-    }
+    },
+    "default_title": "PiNE AI — Fact Checker"
   },
+
   "side_panel": {
     "default_path": "popup/popup.html"
   },
+
   "background": {
     "service_worker": "background/service_worker.js"
   },
+
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
   ],
+
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+
   "web_accessible_resources": [
     {
       "resources": [
         "popup/login.html", "popup/popup.html", "popup/dashboard.html",
         "popup/saved.html", "popup/history.html", "popup/settings.html",
-        "popup/detail.html", "popup/popup.js", "popup/login.js",
-        "popup/dashboard.js", "popup/history.js", "popup/saved.js",
-        "popup/settings.js", "popup/detail.js", "popup/config.js",
+        "popup/detail.html", "popup/review.html", "popup/viral.html",
+        "popup/pricing.html",
+        "popup/popup.js", "popup/login.js", "popup/dashboard.js",
+        "popup/history.js", "popup/saved.js", "popup/settings.js",
+        "popup/detail.js", "popup/config.js", "popup/pricing.js",
         "popup/tailwind.css", "popup/shared.css",
-        "icons/logo.png"
+        "icons/logo.png", "icons/icon16.png",
+        "icons/icon48.png", "icons/icon128.png", "models/*",
+        "background/lib/ort.min.js"
       ],
       "matches": ["<all_urls>"]
     }

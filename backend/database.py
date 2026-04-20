@@ -20,6 +20,11 @@ if DATABASE_URL.startswith("postgres://"):
 
 is_sqlite = DATABASE_URL.startswith("sqlite")
 
+POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
+MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+
 if is_sqlite:
     engine = create_engine(
         DATABASE_URL,
@@ -31,10 +36,11 @@ else:
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,       # reconnect if connection dropped
-        pool_size=5,              # max persistent connections
-        max_overflow=10,          # extra connections under load
-        pool_timeout=30,          # wait up to 30s for a connection
-        pool_recycle=1800,        # recycle connections every 30 min
+        pool_use_lifo=True,       # improves reuse and reduces connection churn
+        pool_size=POOL_SIZE,      # max persistent connections
+        max_overflow=MAX_OVERFLOW,  # extra connections under load
+        pool_timeout=POOL_TIMEOUT,  # wait for an available connection
+        pool_recycle=POOL_RECYCLE,  # recycle stale connections
     )
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

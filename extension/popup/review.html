@@ -2,24 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Review Queue — FactCheck AI</title>
+  <title>Review Queue — PiNE AI</title>
   <link rel="stylesheet" href="shared.css">
 </head>
 <body>
 <div class="page-wrap">
 
   <header class="page-header">
-    <button id="back-btn" class="back-btn">
+    <button id="back-btn" class="back-btn" aria-label="Go back">
       <span class="material-symbols-outlined ms-20">arrow_back</span>
     </button>
     <h1>Review Queue</h1>
-    <button id="refresh-btn" class="icon-btn" title="Refresh queue">
+    <button id="refresh-btn" class="icon-btn" title="Refresh queue" aria-label="Refresh queue">
       <span class="material-symbols-outlined ms-20">refresh</span>
     </button>
   </header>
 
   <!-- Stats bar -->
-  <div class="review-stats-bar">
+  <div class="review-stats-bar" role="status" aria-label="Queue statistics">
     <div class="review-stat-item">
       <span class="review-stat-num" id="stat-pending">-</span>
       <span class="review-stat-label">Pending</span>
@@ -35,48 +35,47 @@
   </div>
 
   <!-- Filter tabs -->
-  <div class="review-filters">
-    <button class="review-filter-btn active" data-filter="all">All</button>
-    <button class="review-filter-btn" data-filter="viral">Viral</button>
-    <button class="review-filter-btn" data-filter="trending">Trending</button>
-    <button class="review-filter-btn" data-filter="coordinated">Coordinated</button>
+  <div class="review-filters" role="tablist" aria-label="Filter claims">
+    <button class="review-filter-btn active" data-filter="all" role="tab" aria-selected="true">All</button>
+    <button class="review-filter-btn" data-filter="viral" role="tab" aria-selected="false">Viral</button>
+    <button class="review-filter-btn" data-filter="trending" role="tab" aria-selected="false">Trending</button>
+    <button class="review-filter-btn" data-filter="coordinated" role="tab" aria-selected="false">Coordinated</button>
   </div>
 
-  <div class="page-body" id="review-content">
+  <!-- Scrollable content -->
+  <div class="page-body" id="review-content" role="main">
     <div class="review-loading">
-      <div class="spin-ring"></div>
+      <div class="spin-ring" role="status" aria-label="Loading"></div>
       <div style="margin-top:12px;font-size:12px;color:var(--t3)">Loading review queue...</div>
     </div>
   </div>
 
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <a href="popup.html" aria-label="Chat">
+      <span class="material-symbols-outlined">chat</span>
+      <span>Chat</span>
+    </a>
+    <a href="dashboard.html" aria-label="Dashboard">
+      <span class="material-symbols-outlined">dashboard</span>
+      <span>Dashboard</span>
+    </a>
+    <a href="review.html" class="active" aria-label="Review" aria-current="page">
+      <span class="material-symbols-outlined">fact_check</span>
+      <span>Review</span>
+    </a>
+    <a href="history.html" aria-label="History">
+      <span class="material-symbols-outlined">history</span>
+      <span>History</span>
+    </a>
+    <a href="settings.html" aria-label="Settings">
+      <span class="material-symbols-outlined">settings</span>
+      <span>Settings</span>
+    </a>
+  </nav>
+
 </div>
 
-<!-- Bottom navigation -->
-<nav class="bottom-nav">
-  <a href="popup.html">
-    <span class="material-symbols-outlined">chat</span>
-    <span>Chat</span>
-  </a>
-  <a href="dashboard.html">
-    <span class="material-symbols-outlined">dashboard</span>
-    <span>Dashboard</span>
-  </a>
-  <a href="review.html" class="active">
-    <span class="material-symbols-outlined">fact_check</span>
-    <span>Review</span>
-  </a>
-  <a href="history.html">
-    <span class="material-symbols-outlined">history</span>
-    <span>History</span>
-  </a>
-  <a href="settings.html">
-    <span class="material-symbols-outlined">settings</span>
-    <span>Settings</span>
-  </a>
-</nav>
-
-<!-- WebSocket Status Indicator -->
-<div class="ws-status" id="ws-status">
+<div class="ws-status" id="ws-status" aria-live="polite">
   <div class="ws-status-dot"></div>
   <span class="ws-status-text">Live</span>
 </div>

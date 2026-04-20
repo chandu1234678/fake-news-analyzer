@@ -3,40 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=420">
-  <title>FactCheck AI — Login</title>
+  <title>PiNE AI — Sign In</title>
   <link rel="stylesheet" href="shared.css">
 </head>
 <body>
 <div class="login-wrap">
 
   <div class="login-header">
-    <img src="../icons/logo.png" alt="FactChecker AI" class="login-logo-icon">
+    <img src="../icons/logo.png" alt="PiNE AI logo" class="login-logo-icon">
     <div class="login-brand">
-      <span class="brand-main">FactChecker</span><span class="brand-ai"> AI</span>
+      <span class="brand-main">PiNE</span><span class="brand-ai"> AI</span>
     </div>
-    <p class="login-tagline">Verify information before you believe it</p>
+    <p class="login-tagline">Verify information before you share it</p>
   </div>
 
-  <div class="login-tabs">
-    <button id="tab-login" class="login-tab active">Sign In</button>
-    <button id="tab-signup" class="login-tab">Create Account</button>
+  <div class="login-tabs" role="tablist">
+    <button id="tab-login" class="login-tab active" role="tab" aria-selected="true" aria-controls="form-login">Sign In</button>
+    <button id="tab-signup" class="login-tab" role="tab" aria-selected="false" aria-controls="form-signup">Create Account</button>
   </div>
 
   <div class="login-body">
-    <div id="error-box" class="error-box"></div>
+    <div id="error-box" class="error-box" role="alert" aria-live="assertive"></div>
 
     <!-- Login form -->
-    <div id="form-login">
+    <div id="form-login" role="tabpanel">
       <div class="form-group">
-        <label class="form-label">Email</label>
-        <input id="login-email" type="email" placeholder="you@example.com" class="form-input">
+        <label class="form-label" for="login-email">Email</label>
+        <input id="login-email" type="email" placeholder="you@example.com" class="form-input" autocomplete="email">
       </div>
       <div class="form-group">
-        <label class="form-label">Password</label>
-        <input id="login-password" type="password" placeholder="••••••••" class="form-input">
+        <label class="form-label" for="login-password">Password</label>
+        <input id="login-password" type="password" placeholder="••••••••" class="form-input" autocomplete="current-password">
       </div>
       <button id="login-btn" class="form-btn">Sign In</button>
-      <div style="text-align:right;margin-top:6px;">
+      <div style="text-align:right;margin-top:8px;">
         <button id="forgot-btn" class="link-btn">Forgot password?</button>
       </div>
       <div class="divider-row">
@@ -56,18 +56,18 @@
     </div>
 
     <!-- Signup form -->
-    <div id="form-signup" style="display:none">
+    <div id="form-signup" role="tabpanel" style="display:none">
       <div class="form-group">
-        <label class="form-label">Name</label>
-        <input id="signup-name" type="text" placeholder="Your name" class="form-input">
+        <label class="form-label" for="signup-name">Name</label>
+        <input id="signup-name" type="text" placeholder="Your name" class="form-input" autocomplete="name">
       </div>
       <div class="form-group">
-        <label class="form-label">Email</label>
-        <input id="signup-email" type="email" placeholder="you@example.com" class="form-input">
+        <label class="form-label" for="signup-email">Email</label>
+        <input id="signup-email" type="email" placeholder="you@example.com" class="form-input" autocomplete="email">
       </div>
       <div class="form-group">
-        <label class="form-label">Password</label>
-        <input id="signup-password" type="password" placeholder="Min 6 characters" class="form-input">
+        <label class="form-label" for="signup-password">Password</label>
+        <input id="signup-password" type="password" placeholder="Min 6 characters" class="form-input" autocomplete="new-password">
       </div>
       <button id="signup-btn" class="form-btn">Create Account</button>
       <div class="divider-row">
@@ -88,27 +88,27 @@
 
     <!-- Forgot password — step 1: enter email -->
     <div id="form-forgot" style="display:none">
-      <p style="font-size:12px;color:var(--t3);margin-bottom:14px;">Enter your email and we'll send a 6-digit code.</p>
+      <p style="font-size:12px;color:var(--t3);margin-bottom:14px;line-height:1.6">Enter your email and we'll send a 6-digit code.</p>
       <div class="form-group">
-        <label class="form-label">Email</label>
-        <input id="forgot-email" type="email" placeholder="you@example.com" class="form-input">
+        <label class="form-label" for="forgot-email">Email</label>
+        <input id="forgot-email" type="email" placeholder="you@example.com" class="form-input" autocomplete="email">
       </div>
       <button id="send-otp-btn" class="form-btn">Send Code</button>
-      <div style="text-align:center;margin-top:10px;">
+      <div style="text-align:center;margin-top:12px;">
         <button id="back-to-login-btn" class="link-btn">← Back to Sign In</button>
       </div>
     </div>
 
     <!-- Forgot password — step 2: enter OTP + new password -->
     <div id="form-reset" style="display:none">
-      <p style="font-size:12px;color:var(--t3);margin-bottom:14px;">Enter the 6-digit code sent to your email.</p>
+      <p style="font-size:12px;color:var(--t3);margin-bottom:14px;line-height:1.6">Enter the 6-digit code sent to your email.</p>
       <div class="form-group">
-        <label class="form-label">Code</label>
-        <input id="reset-otp" type="text" placeholder="123456" maxlength="6" class="form-input" style="letter-spacing:6px;font-size:18px;text-align:center;">
+        <label class="form-label" for="reset-otp">Code</label>
+        <input id="reset-otp" type="text" placeholder="123456" maxlength="6" class="form-input" style="letter-spacing:6px;font-size:18px;text-align:center;" autocomplete="one-time-code">
       </div>
       <div class="form-group">
-        <label class="form-label">New Password</label>
-        <input id="reset-password" type="password" placeholder="Min 6 characters" class="form-input">
+        <label class="form-label" for="reset-password">New Password</label>
+        <input id="reset-password" type="password" placeholder="Min 6 characters" class="form-input" autocomplete="new-password">
       </div>
       <button id="reset-btn" class="form-btn">Reset Password</button>
       <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--t3)">
@@ -121,7 +121,7 @@
     </div>
   </div>
 
-  <div class="login-footer">By continuing you agree to our Terms of Service</div>
+  <div class="login-footer">By continuing you agree to our <a href="#" style="color:var(--t2);text-decoration:none">Terms of Service</a></div>
 
 </div>
 <script src="config.js"></script>

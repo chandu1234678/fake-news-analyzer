@@ -1,21 +1,38 @@
 services:
   - type: web
-    name: factcheck-ai-backend
+    name: pine-ai-backend
     runtime: python
     rootDir: backend
     pythonVersion: "3.11.9"
+    # Install deps — torch/transformers are in requirements but won't load on free tier
     buildCommand: pip install -r requirements.txt
+    # 2 workers, 120s timeout for AI calls, keep-alive for Render's load balancer
     startCommand: gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 75
     healthCheckPath: /health
+    # Render free tier: 512MB RAM — DeBERTa disabled, TF-IDF only
+    plan: free
     envVars:
+      # ── LLM API Keys (required — at least one must be set) ──────────────────
       - key: CEREBRAS_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: MINIMAX_API_KEY
+        sync: false
+
+      # ── News / Search APIs ───────────────────────────────────────────────────
       - key: NEWS_API_KEY
         sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: GOOGLE_FACTCHECK_API_KEY
+        sync: false
+
+      # ── Auth / Email ─────────────────────────────────────────────────────────
       - key: JWT_SECRET
         generateValue: true
       - key: GOOGLE_CLIENT_ID
@@ -24,13 +41,36 @@ services:
         sync: false
       - key: SMTP_USER
         sync: false
+
+      # ── Database ─────────────────────────────────────────────────────────────
       - key: DATABASE_URL
         sync: false
+
+      # ── ML Models ────────────────────────────────────────────────────────────
+      # Bharat2004/out = DistilBERT 67MB, 98.97% accuracy — FITS on free tier (512MB RAM)
+      # For higher accuracy: Bharat2004/deberta-fakenews-detector (200MB, needs 1.5GB RAM)
       - key: DEBERTA_MODEL
+        value: "Bharat2004/out"
+      # Set to true ONLY if using deberta models (needs 1.5GB+ RAM — NOT on free tier)
+      - key: FORCE_TRANSFORMER_LOAD
+        value: "false"
+      # Keep false — ensemble requires fine-tuned models from train_finetune_ensemble.py
+      - key: ENABLE_ENSEMBLE
+        value: "false"
+      # HuggingFace token — needed if DEBERTA_MODEL is set to a private/gated model
+      - key: HF_TOKEN
         sync: false
-      - key: BRAVE_API_KEY
-        sync: false
-      - key: SERPAPI_KEY
-        sync: false
-      - key: GOOGLE_FACTCHECK_API_KEY
-        sync: false
+
+      # ── Feature Flags ────────────────────────────────────────────────────────
+      # Skip training on startup if model.joblib already exists (faster cold start)
+      - key: SKIP_TRAIN_ON_STARTUP
+        value: "false"
+      # Wikidata entity verification — disabled by default (adds latency)
+      - key: WIKIDATA_ENABLED
+        value: "false"
+      # Social graph analysis — disabled by default (requires Twitter/Reddit keys)
+      - key: SOCIAL_GRAPH_ENABLED
+        value: "false"
+      # Redis cache — disabled by default (no Redis on free tier)
+      - key: REDIS_ENABLED
+        value: "false"

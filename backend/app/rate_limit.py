@@ -23,32 +23,56 @@ logger = logging.getLogger(__name__)
 # Rate limit configuration
 RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
 
-# Tier limits (requests per window)
+# ── Tier Limits ───────────────────────────────────────────────
+# Designed for 500 free users on free API keys:
+#   Free users → Qwen3 only (unlimited free)
+#   500 users × 3 checks/day = 1,500 req/day → well within Qwen3 limits
+#
+# Paid tiers use more models but have fewer users, so total API usage stays low.
 TIER_LIMITS = {
+    "anonymous": {
+        "per_minute": 3,
+        "per_hour": 10,
+        "per_day": 20,
+        "monthly_claims": 10,
+        "ai_models": 1,          # Qwen3 only
+        "description": "No account",
+    },
     "free": {
-        "per_minute": 10,
-        "per_hour": 100,
-        "per_day": 500,
+        "per_minute": 5,
+        "per_hour": 30,
+        "per_day": 100,
         "monthly_claims": 100,
+        "ai_models": 1,          # Qwen3 only
+        "description": "Free tier — 100 claims/month",
+    },
+    "starter": {
+        "per_minute": 15,
+        "per_hour": 200,
+        "per_day": 600,
+        "monthly_claims": 500,
+        "ai_models": 2,          # Qwen3 + Groq
+        "price_inr": 99,
+        "description": "Starter — ₹99/month, 500 claims",
     },
     "pro": {
-        "per_minute": 60,
-        "per_hour": 1000,
-        "per_day": 10000,
-        "monthly_claims": 1000,
+        "per_minute": 30,
+        "per_hour": 500,
+        "per_day": 5000,
+        "monthly_claims": 5000,
+        "ai_models": 4,          # Qwen3 + Groq + Gemini + Gemma4
+        "price_inr": 499,
+        "description": "Pro — ₹499/month, 5,000 claims",
     },
     "enterprise": {
-        "per_minute": 300,
-        "per_hour": 10000,
-        "per_day": 100000,
-        "monthly_claims": -1,  # Unlimited
+        "per_minute": 100,
+        "per_hour": 2000,
+        "per_day": 50000,
+        "monthly_claims": -1,    # Unlimited
+        "ai_models": 5,          # All models including MiniMax 229B
+        "price_inr": 2999,
+        "description": "Enterprise — ₹2,999/month, unlimited",
     },
-    "anonymous": {
-        "per_minute": 5,
-        "per_hour": 20,
-        "per_day": 50,
-        "monthly_claims": 10,
-    }
 }
 
 # Endpoint-specific limits (multipliers)

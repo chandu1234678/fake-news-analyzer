@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=420">
-  <title>FactCheck AI</title>
+  <title>PiNE AI</title>
   <link rel="stylesheet" href="shared.css">
 </head>
 <body>
@@ -15,9 +15,9 @@
   <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">
-        <span class="sidebar-logo-text"><span class="brand-main">FactChecker</span><span class="brand-ai"> AI</span></span>
+        <span class="sidebar-logo-text"><span class="brand-main">PiNE</span><span class="brand-ai"> AI</span></span>
       </div>
-      <button id="close-sidebar-btn" class="icon-btn">
+      <button id="close-sidebar-btn" class="icon-btn" aria-label="Close sidebar">
         <span class="material-symbols-outlined ms-16">close</span>
       </button>
     </div>
@@ -30,27 +30,27 @@
     <div id="sessions-list" class="scroll"></div>
 
     <nav class="sidebar-nav">
-      <a id="nav-dashboard">
+      <a id="nav-dashboard" role="button" tabindex="0">
         <span class="material-symbols-outlined ms-16">grid_view</span> Dashboard
       </a>
-      <a id="nav-saved">
+      <a id="nav-saved" role="button" tabindex="0">
         <span class="material-symbols-outlined ms-16">bookmark</span> Saved
       </a>
-      <a id="nav-history">
+      <a id="nav-history" role="button" tabindex="0">
         <span class="material-symbols-outlined ms-16">history</span> History
       </a>
-      <a id="nav-settings">
+      <a id="nav-settings" role="button" tabindex="0">
         <span class="material-symbols-outlined ms-16">settings</span> Settings
       </a>
     </nav>
 
     <div class="sidebar-user">
-      <div id="sidebar-avatar" class="sidebar-avatar">?</div>
+      <div id="sidebar-avatar" class="sidebar-avatar" aria-hidden="true">?</div>
       <div class="sidebar-user-info">
         <div id="sidebar-name" class="u-name">—</div>
         <div id="sidebar-email" class="u-email"></div>
       </div>
-      <button id="logout-btn" class="logout-btn" title="Sign out">
+      <button id="logout-btn" class="logout-btn" title="Sign out" aria-label="Sign out">
         <span class="material-symbols-outlined ms-16">logout</span>
       </button>
     </div>
@@ -59,25 +59,29 @@
   <!-- Main shell -->
   <div class="app-shell">
     <header class="app-header">
-      <button id="open-sidebar-btn" class="icon-btn">
+      <button id="open-sidebar-btn" class="icon-btn" aria-label="Open menu">
         <span class="material-symbols-outlined ms-20">menu</span>
       </button>
       <div class="header-logo">
-        <span id="chat-title" class="logo-text"><span class="brand-main">FactChecker</span><span class="brand-ai"> AI</span></span>
+        <span id="chat-title" class="logo-text"><span class="brand-main">PiNE</span><span class="brand-ai"> AI</span></span>
       </div>
-      <button id="new-chat-btn" class="icon-btn" title="New chat">
+      <div class="ws-status" id="ws-status" title="Connection status" aria-live="polite">
+        <div class="ws-status-dot"></div>
+        <span class="ws-status-text">Live</span>
+      </div>
+      <button id="new-chat-btn" class="icon-btn" title="New chat" aria-label="New chat">
         <span class="material-symbols-outlined ms-18">edit_square</span>
       </button>
     </header>
 
-    <div id="chat-container"></div>
+    <div id="chat-container" role="log" aria-label="Chat messages" aria-live="polite"></div>
 
     <div class="input-area">
       <!-- Attachment preview bar -->
       <div id="attach-preview-bar" style="display:none;align-items:center;gap:8px;padding:4px 12px 2px;font-size:11px;color:var(--t3)">
         <span class="material-symbols-outlined ms-12" id="attach-preview-icon" style="color:var(--accent)">image</span>
         <span id="attach-preview-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-        <button id="attach-remove-btn" style="background:none;border:none;cursor:pointer;color:var(--t3);padding:0;line-height:1">
+        <button id="attach-remove-btn" style="background:none;border:none;cursor:pointer;color:var(--t3);padding:0;line-height:1" aria-label="Remove attachment">
           <span class="material-symbols-outlined ms-12">close</span>
         </button>
       </div>
@@ -85,37 +89,38 @@
       <div class="input-box">
         <!-- + attach menu -->
         <div style="position:relative">
-          <button id="attach-btn" class="icon-btn" title="Attach file" style="position:relative">
+          <button id="attach-btn" class="icon-btn" title="Attach file" aria-label="Attach file" aria-haspopup="true" aria-expanded="false">
             <span class="material-symbols-outlined ms-18">add_circle</span>
           </button>
-          <div id="attach-menu" style="display:none;position:absolute;bottom:40px;left:0;background:var(--surface);border:1px solid var(--a-bdr);border-radius:12px;padding:6px;min-width:150px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:100">
-            <label class="attach-menu-item">
+          <div id="attach-menu" role="menu" style="display:none;position:absolute;bottom:40px;left:0;background:var(--surface);border:1px solid var(--a-bdr);border-radius:12px;padding:6px;min-width:150px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:100">
+            <label class="attach-menu-item" role="menuitem">
               <span class="material-symbols-outlined ms-14">image</span> Image
               <input type="file" id="file-image" accept="image/*" style="display:none">
             </label>
-            <label class="attach-menu-item">
+            <label class="attach-menu-item" role="menuitem">
+              <span class="material-symbols-outlined ms-14">audiotrack</span> Audio
+              <input type="file" id="file-audio" accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm" style="display:none">
+            </label>
+            <label class="attach-menu-item" role="menuitem">
               <span class="material-symbols-outlined ms-14">picture_as_pdf</span> PDF
               <input type="file" id="file-pdf" accept=".pdf" style="display:none">
             </label>
-            <label class="attach-menu-item">
+            <label class="attach-menu-item" role="menuitem">
               <span class="material-symbols-outlined ms-14">description</span> Text file
               <input type="file" id="file-txt" accept=".txt,.md,.csv,.doc,.docx" style="display:none">
             </label>
           </div>
         </div>
 
-        <textarea id="input-text" rows="1" placeholder="Ask anything or paste a claim…"></textarea>
-        <button id="send-btn">
+        <textarea id="input-text" rows="1" placeholder="Ask anything or paste a claim…" aria-label="Message input"></textarea>
+        <button id="voice-btn" class="icon-btn" title="Voice input" aria-label="Voice input">
+          <span class="material-symbols-outlined ms-18">mic</span>
+        </button>
+        <button id="send-btn" aria-label="Send message">
           <span class="material-symbols-outlined">send</span>
         </button>
       </div>
     </div>
-  </div>
-
-  <!-- WebSocket Status Indicator -->
-  <div class="ws-status" id="ws-status">
-    <div class="ws-status-dot"></div>
-    <span class="ws-status-text">Live</span>
   </div>
 
   <script src="config.js"></script>

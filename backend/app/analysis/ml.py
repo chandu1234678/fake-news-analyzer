@@ -17,19 +17,17 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 # ── Transformer model (primary) ───────────────────────────────
-# After training on Colab, set DEBERTA_MODEL=your-hf-username/factchecker-deberta
-# Falls back to the public RoBERTa model if not configured
-_DEFAULT_MODEL  = "jy46604790/Fake-News-Bert-Detect"
-ROBERTA_MODEL   = os.getenv("DEBERTA_MODEL", _DEFAULT_MODEL)
-
-_roberta_pipe   = None
-_roberta_failed = False
-
-# ── Transformer model (primary) ───────────────────────────────
-# After training on Colab, set DEBERTA_MODEL=your-hf-username/factchecker-deberta
-# Falls back to the public RoBERTa model if not configured
-_DEFAULT_MODEL  = "jy46604790/Fake-News-Bert-Detect"
-ROBERTA_MODEL   = os.getenv("DEBERTA_MODEL", _DEFAULT_MODEL)
+# Priority order (set DEBERTA_MODEL env var to override):
+#   1. Bharat2004/out              — DistilBERT 67MB, 98.97% acc, FASTEST ← default
+#   2. Bharat2004/deberta-fakenews-detector — DeBERTa 200MB, high accuracy
+#   3. Bharat2004/deberta-factchecker       — DeBERTa 200MB, alternative
+#   4. Bharat2004/factchecker-deberta       — DeBERTa 200MB, alternative
+#   5. Arko007/fact-check1-v3-final         — DeBERTa-v3-large 400MB, 99.98% acc
+#
+# On Render free tier (512MB RAM): use Bharat2004/out (67MB, fits easily)
+# On paid tier / local with >1.5GB RAM: use deberta-fakenews-detector for best accuracy
+_DEFAULT_MODEL = "Bharat2004/out"
+ROBERTA_MODEL  = os.getenv("DEBERTA_MODEL") or _DEFAULT_MODEL
 
 _roberta_pipe   = None
 _roberta_failed = False
@@ -39,34 +37,47 @@ def _load_roberta():
     global _roberta_pipe, _roberta_failed
     if _roberta_pipe is not None or _roberta_failed:
         return _roberta_pipe
+    
+    # Check if user wants to force load transformer (useful when you have fine-tuned models)
+    force_load = os.getenv("FORCE_TRANSFORMER_LOAD", "false").lower() == "true"
+    
     # Skip RoBERTa on memory-constrained environments (< 1.5 GB available RAM)
     # Render free tier has 512 MB — torch alone needs ~800 MB
-    try:
-        import psutil
-        available_mb = psutil.virtual_memory().available / (1024 * 1024)
-        if available_mb < 1500:
-            logger.warning(
-                "Skipping RoBERTa load — only %.0f MB RAM available (need 1500 MB). Using TF-IDF.",
-                available_mb,
-            )
-            _roberta_failed = True
-            return None
-    except ImportError:
-        pass  # psutil not installed — proceed anyway
+    if not force_load:
+        try:
+            import psutil
+            available_mb = psutil.virtual_memory().available / (1024 * 1024)
+            if available_mb < 1500:
+                logger.warning(
+                    "Skipping RoBERTa load — only %.0f MB RAM available (need 1500 MB). Using TF-IDF.",
+                    available_mb,
+                )
+                logger.info("Set FORCE_TRANSFORMER_LOAD=true in .env to load anyway")
+                _roberta_failed = True
+                return None
+        except ImportError:
+            pass  # psutil not installed — proceed anyway
 
     try:
         from transformers import pipeline
         import torch
+        
+        # Get HF token for your fine-tuned models
+        hf_token = os.getenv("HF_TOKEN")
+        if hf_token:
+            logger.info("Using HuggingFace token for model download")
+        
         device = 0 if torch.cuda.is_available() else -1
         _roberta_pipe = pipeline(
             "text-classification",
             model=ROBERTA_MODEL,
             tokenizer=ROBERTA_MODEL,
+            token=hf_token,  # Use your HF token
             device=device,
             truncation=True,
             max_length=512,
         )
-        logger.info("RoBERTa fake-news model loaded (device=%s)", "GPU" if device == 0 else "CPU")
+        logger.info("✓ RoBERTa model loaded: %s (device=%s)", ROBERTA_MODEL, "GPU" if device == 0 else "CPU")
     except Exception as e:
         logger.warning("RoBERTa load failed, will use TF-IDF fallback: %s", e)
         _roberta_failed = True
@@ -82,15 +93,15 @@ def _roberta_score(text: str) -> float | None:
         result = pipe(text[:1500])[0]
         label  = result["label"].upper()
         score  = float(result["score"])
-        # Handle both label formats:
-        # RoBERTa: LABEL_0=Fake, LABEL_1=Real
-        # DeBERTa fine-tuned: FAKE, REAL
-        if label in ("LABEL_0", "FAKE"):
-            return round(score, 3)
-        elif label in ("LABEL_1", "REAL"):
-            return round(1.0 - score, 3)
+        # Handle all known label formats:
+        # Arko007/fact-check1-v3-final: FAKE, REAL
+        # jy46604790/Fake-News-Bert-Detect: LABEL_0=Fake, LABEL_1=Real
+        # Bharat2004 models: LABEL_0=real, LABEL_1=fake
+        if label in ("LABEL_0", "REAL"):
+            return round(1.0 - score, 3)   # score = confidence of REAL → invert for fake prob
+        elif label in ("LABEL_1", "FAKE"):
+            return round(score, 3)          # score = confidence of FAKE
         else:
-            # Unknown label — use score as-is if > 0.5 means fake
             return round(score, 3)
     except Exception as e:
         logger.warning("Transformer inference failed: %s", e)
@@ -136,11 +147,42 @@ def _tfidf_score(text: str) -> float | None:
 # ── Public API ────────────────────────────────────────────────
 def run_ml_analysis(text: str) -> dict:
     """
-    Returns {"fake": float, "source": "roberta"|"tfidf"|"default"}
+    Returns {"fake": float, "source": "roberta"|"tfidf"|"default"|"ensemble"}
 
-    Tries RoBERTa first, falls back to TF-IDF, then returns 0.5 if both fail.
-    Caches results for 24 hours to reduce compute costs.
+    Priority order:
+      1. Fine-tuned ensemble (ENABLE_ENSEMBLE=true) — uses both fine-tuned models
+         from train_finetune_ensemble.py via backend/data/ensemble_config.json
+      2. Single transformer (DEBERTA_MODEL env var or default)
+      3. TF-IDF + Logistic Regression (always available, ~96% accuracy)
+      4. Default 0.5 if everything fails
     """
+    enable_ensemble = os.getenv("ENABLE_ENSEMBLE", "false").lower() == "true"
+
+    if enable_ensemble:
+        try:
+            from app.analysis.ml_ensemble import predict_ensemble
+            result = predict_ensemble(text, method="weighted")
+            if result:
+                logger.info(
+                    "Ensemble: fake=%.3f models=%d (%s)",
+                    result["fake"],
+                    result["models_used"],
+                    ", ".join(result["individual_predictions"].keys()),
+                )
+                try:
+                    from app.cache import partial_cache
+                    partial_cache.set_ml_score(text, result["fake"])
+                except Exception:
+                    pass
+                return {
+                    "fake":        result["fake"],
+                    "source":      "ensemble",
+                    "models_used": result["models_used"],
+                    "confidence":  result.get("confidence", 0.0),
+                }
+        except Exception as e:
+            logger.warning("Ensemble prediction failed: %s", e)
+    
     # Try cache first
     try:
         from app.cache import partial_cache

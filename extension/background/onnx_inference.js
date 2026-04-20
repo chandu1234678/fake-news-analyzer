@@ -13,9 +13,26 @@ class LocalInference {
         this.session = null;
         this.tokenizer = null;
         this.modelLoaded = false;
+        this.mode = 'uninitialized'; // onnx | heuristic | unavailable
         this.modelPath = 'models/model_optimized.onnx';
+        this.tokenizerPath = 'models/tokenizer.json';
+        this.ortRuntimePath = 'background/lib/ort.min.js';
         this.maxLength = 512;
         this.labels = ['real', 'fake'];
+    }
+
+    async ensureOrtRuntime() {
+        if (typeof ort !== 'undefined' && ort.InferenceSession) return true;
+
+        try {
+            if (typeof importScripts === 'function') {
+                importScripts(chrome.runtime.getURL(this.ortRuntimePath));
+            }
+        } catch (error) {
+            console.warn('[LocalInference] ORT runtime script unavailable:', error);
+        }
+
+        return typeof ort !== 'undefined' && !!ort.InferenceSession;
     }
     
     /**
@@ -26,15 +43,25 @@ class LocalInference {
         console.log('[LocalInference] Initializing...');
         
         try {
+            const ortReady = await this.ensureOrtRuntime();
+            if (!ortReady) {
+                console.warn('[LocalInference] ONNX runtime not found, using heuristic fallback');
+                this.mode = 'heuristic';
+                this.modelLoaded = true;
+                return true;
+            }
+
             await this.loadModel();
             await this.loadTokenizer();
             this.modelLoaded = true;
+            this.mode = 'onnx';
             console.log('[LocalInference] ✓ Ready for inference');
             return true;
         } catch (error) {
-            console.error('[LocalInference] ✗ Initialization failed:', error);
-            this.modelLoaded = false;
-            return false;
+            console.warn('[LocalInference] ONNX initialization failed, falling back to heuristic:', error);
+            this.mode = 'heuristic';
+            this.modelLoaded = true;
+            return true;
         }
     }
     
@@ -89,7 +116,7 @@ class LocalInference {
         
         try {
             // Load tokenizer config
-            const response = await fetch(chrome.runtime.getURL('models/tokenizer.json'));
+            const response = await fetch(chrome.runtime.getURL(this.tokenizerPath));
             if (!response.ok) {
                 throw new Error(`Failed to fetch tokenizer: ${response.statusText}`);
             }
@@ -111,6 +138,10 @@ class LocalInference {
     async predict(text) {
         if (!this.modelLoaded) {
             throw new Error('Model not loaded. Call initialize() first.');
+        }
+
+        if (this.mode === 'heuristic') {
+            return this.heuristicPredict(text);
         }
         
         const startTime = performance.now();
@@ -164,6 +195,41 @@ class LocalInference {
             console.error('[LocalInference] Prediction failed:', error);
             throw error;
         }
+    }
+
+    /**
+     * Lightweight fallback scoring for offline mode when ONNX runtime/assets are unavailable.
+     */
+    heuristicPredict(text) {
+        const startTime = performance.now();
+        const t = String(text || '').toLowerCase();
+
+        const sensational = /\b(shocking|must\s+read|they\s+don't\s+want\s+you\s+to\s+know|breaking|urgent)\b/g;
+        const absolutist = /\b(always|never|everyone|nobody|all|none|proved|guaranteed)\b/g;
+        const conspiracy = /\b(hoax|cover[-\s]?up|deep state|mainstream media lies|fake media)\b/g;
+        const sourceHints = /\b(reuters|ap\s?news|bbc|who|cdc|nih|nature|science)\b/g;
+
+        const s = (t.match(sensational) || []).length;
+        const a = (t.match(absolutist) || []).length;
+        const c = (t.match(conspiracy) || []).length;
+        const good = (t.match(sourceHints) || []).length;
+
+        // Heuristic risk blend, clipped to [0.05, 0.95]
+        let fakeProb = 0.35 + s * 0.12 + a * 0.07 + c * 0.15 - good * 0.08;
+        fakeProb = Math.max(0.05, Math.min(0.95, fakeProb));
+
+        const verdict = fakeProb > 0.5 ? 'fake' : 'real';
+        const confidence = verdict === 'fake' ? fakeProb : (1 - fakeProb);
+
+        return {
+            verdict,
+            confidence,
+            fake_probability: fakeProb,
+            real_probability: 1 - fakeProb,
+            inference_time_ms: performance.now() - startTime,
+            source: 'local',
+            model: 'heuristic-fallback'
+        };
     }
     
     /**
@@ -309,7 +375,11 @@ class LocalInference {
     getInfo() {
         return {
             loaded: this.modelLoaded,
+            mode: this.mode,
             modelPath: this.modelPath,
+            tokenizerPath: this.tokenizerPath,
+            ortRuntimePath: this.ortRuntimePath,
+            ortAvailable: typeof ort !== 'undefined' && !!ort.InferenceSession,
             maxLength: this.maxLength,
             labels: this.labels
         };

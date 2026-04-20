@@ -14,6 +14,7 @@ import logging
 from database import get_db
 from app.models import User, ClaimRecord, UserFeedback, VelocityRecord
 from app.auth import get_current_user
+from app.cache import analytics_key, get_or_set_query_result
 
 logger = logging.getLogger(__name__)
 
@@ -33,45 +34,49 @@ async def get_viral_trends(
     
     Returns claims with high velocity scores and fake verdicts.
     """
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    
-    # Get viral fake claims
-    viral_claims = db.query(
-        VelocityRecord.claim_text,
-        VelocityRecord.velocity_score,
-        VelocityRecord.count_24hr,
-        VelocityRecord.is_viral,
-        VelocityRecord.cluster_size,
-        VelocityRecord.created_at
-    ).join(
-        ClaimRecord,
-        VelocityRecord.claim_hash == ClaimRecord.claim_hash
-    ).filter(
-        and_(
-            VelocityRecord.created_at >= cutoff,
-            VelocityRecord.is_viral == True,
-            ClaimRecord.verdict == "fake"
-        )
-    ).order_by(
-        desc(VelocityRecord.velocity_score)
-    ).limit(limit).all()
-    
-    trends = [
-        {
-            "claim": claim.claim_text[:200],
-            "velocity_score": float(claim.velocity_score),
-            "count_24hr": claim.count_24hr,
-            "cluster_size": claim.cluster_size or 1,
-            "detected_at": claim.created_at.isoformat(),
+    cache_key = analytics_key("trends_viral", days=days, limit=limit)
+
+    def _compute():
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        viral_claims = db.query(
+            VelocityRecord.claim_text,
+            VelocityRecord.velocity_score,
+            VelocityRecord.count_24hr,
+            VelocityRecord.is_viral,
+            VelocityRecord.cluster_size,
+            VelocityRecord.created_at
+        ).join(
+            ClaimRecord,
+            VelocityRecord.claim_hash == ClaimRecord.claim_hash
+        ).filter(
+            and_(
+                VelocityRecord.created_at >= cutoff,
+                VelocityRecord.is_viral == True,
+                ClaimRecord.verdict == "fake"
+            )
+        ).order_by(
+            desc(VelocityRecord.velocity_score)
+        ).limit(limit).all()
+
+        trends = [
+            {
+                "claim": claim.claim_text[:200],
+                "velocity_score": float(claim.velocity_score),
+                "count_24hr": claim.count_24hr,
+                "cluster_size": claim.cluster_size or 1,
+                "detected_at": claim.created_at.isoformat(),
+            }
+            for claim in viral_claims
+        ]
+
+        return {
+            "period_days": days,
+            "viral_claims": len(trends),
+            "trends": trends
         }
-        for claim in viral_claims
-    ]
-    
-    return {
-        "period_days": days,
-        "viral_claims": len(trends),
-        "trends": trends
-    }
+
+    return get_or_set_query_result(cache_key, _compute)
 
 
 @router.get("/trends/topics")
@@ -84,50 +89,51 @@ async def get_topic_trends(
     
     Uses domain classification to group claims by topic.
     """
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    
-    # Get claims with domain info (stored in JSON)
-    # This is a simplified version - in production, you'd want a separate domain table
-    claims = db.query(
-        ClaimRecord.verdict,
-        func.count(ClaimRecord.id).label("count")
-    ).filter(
-        ClaimRecord.created_at >= cutoff
-    ).group_by(
-        ClaimRecord.verdict
-    ).all()
-    
-    # Get daily breakdown
-    daily_stats = db.query(
-        cast(ClaimRecord.created_at, Date).label("date"),
-        ClaimRecord.verdict,
-        func.count(ClaimRecord.id).label("count")
-    ).filter(
-        ClaimRecord.created_at >= cutoff
-    ).group_by(
-        cast(ClaimRecord.created_at, Date),
-        ClaimRecord.verdict
-    ).order_by(
-        cast(ClaimRecord.created_at, Date)
-    ).all()
-    
-    # Format daily data
-    daily_data = {}
-    for stat in daily_stats:
-        date_str = str(stat.date)
-        if date_str not in daily_data:
-            daily_data[date_str] = {"date": date_str, "fake": 0, "real": 0, "uncertain": 0}
-        daily_data[date_str][stat.verdict] = stat.count
-    
-    return {
-        "period_days": days,
-        "summary": {
-            "fake": sum(c.count for c in claims if c.verdict == "fake"),
-            "real": sum(c.count for c in claims if c.verdict == "real"),
-            "uncertain": sum(c.count for c in claims if c.verdict == "uncertain"),
-        },
-        "daily_breakdown": list(daily_data.values())
-    }
+    cache_key = analytics_key("trends_topics", days=days)
+
+    def _compute():
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        claims = db.query(
+            ClaimRecord.verdict,
+            func.count(ClaimRecord.id).label("count")
+        ).filter(
+            ClaimRecord.created_at >= cutoff
+        ).group_by(
+            ClaimRecord.verdict
+        ).all()
+
+        daily_stats = db.query(
+            cast(ClaimRecord.created_at, Date).label("date"),
+            ClaimRecord.verdict,
+            func.count(ClaimRecord.id).label("count")
+        ).filter(
+            ClaimRecord.created_at >= cutoff
+        ).group_by(
+            cast(ClaimRecord.created_at, Date),
+            ClaimRecord.verdict
+        ).order_by(
+            cast(ClaimRecord.created_at, Date)
+        ).all()
+
+        daily_data = {}
+        for stat in daily_stats:
+            date_str = str(stat.date)
+            if date_str not in daily_data:
+                daily_data[date_str] = {"date": date_str, "fake": 0, "real": 0, "uncertain": 0}
+            daily_data[date_str][stat.verdict] = stat.count
+
+        return {
+            "period_days": days,
+            "summary": {
+                "fake": sum(c.count for c in claims if c.verdict == "fake"),
+                "real": sum(c.count for c in claims if c.verdict == "real"),
+                "uncertain": sum(c.count for c in claims if c.verdict == "uncertain"),
+            },
+            "daily_breakdown": list(daily_data.values())
+        }
+
+    return get_or_set_query_result(cache_key, _compute)
 
 
 @router.get("/trends/geographic")
@@ -161,63 +167,64 @@ async def get_user_engagement(
     
     Returns active users, claims per user, feedback rate, etc.
     """
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    
-    # Active users (users who made claims)
-    active_users = db.query(
-        func.count(func.distinct(ClaimRecord.user_id))
-    ).filter(
-        and_(
-            ClaimRecord.user_id.isnot(None),
+    cache_key = analytics_key("users_engagement", days=days)
+
+    def _compute():
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        active_users = db.query(
+            func.count(func.distinct(ClaimRecord.user_id))
+        ).filter(
+            and_(
+                ClaimRecord.user_id.isnot(None),
+                ClaimRecord.created_at >= cutoff
+            )
+        ).scalar() or 0
+
+        total_claims = db.query(
+            func.count(ClaimRecord.id)
+        ).filter(
             ClaimRecord.created_at >= cutoff
-        )
-    ).scalar() or 0
-    
-    # Total claims
-    total_claims = db.query(
-        func.count(ClaimRecord.id)
-    ).filter(
-        ClaimRecord.created_at >= cutoff
-    ).scalar() or 0
-    
-    # Claims with feedback
-    claims_with_feedback = db.query(
-        func.count(func.distinct(UserFeedback.claim_text))
-    ).filter(
-        UserFeedback.created_at >= cutoff
-    ).scalar() or 0
-    
-    # Top contributors
-    top_users = db.query(
-        User.name,
-        User.email,
-        func.count(ClaimRecord.id).label("claim_count")
-    ).join(
-        ClaimRecord,
-        User.id == ClaimRecord.user_id
-    ).filter(
-        ClaimRecord.created_at >= cutoff
-    ).group_by(
-        User.id, User.name, User.email
-    ).order_by(
-        desc("claim_count")
-    ).limit(10).all()
-    
-    return {
-        "period_days": days,
-        "active_users": active_users,
-        "total_claims": total_claims,
-        "avg_claims_per_user": round(total_claims / active_users, 2) if active_users > 0 else 0,
-        "feedback_rate": round(claims_with_feedback / total_claims, 3) if total_claims > 0 else 0,
-        "top_contributors": [
-            {
-                "name": user.name or "Anonymous",
-                "email": user.email[:20] + "..." if len(user.email) > 20 else user.email,
-                "claims": user.claim_count
-            }
-            for user in top_users
-        ]
-    }
+        ).scalar() or 0
+
+        claims_with_feedback = db.query(
+            func.count(func.distinct(UserFeedback.claim_text))
+        ).filter(
+            UserFeedback.created_at >= cutoff
+        ).scalar() or 0
+
+        top_users = db.query(
+            User.name,
+            User.email,
+            func.count(ClaimRecord.id).label("claim_count")
+        ).join(
+            ClaimRecord,
+            User.id == ClaimRecord.user_id
+        ).filter(
+            ClaimRecord.created_at >= cutoff
+        ).group_by(
+            User.id, User.name, User.email
+        ).order_by(
+            desc("claim_count")
+        ).limit(10).all()
+
+        return {
+            "period_days": days,
+            "active_users": active_users,
+            "total_claims": total_claims,
+            "avg_claims_per_user": round(total_claims / active_users, 2) if active_users > 0 else 0,
+            "feedback_rate": round(claims_with_feedback / total_claims, 3) if total_claims > 0 else 0,
+            "top_contributors": [
+                {
+                    "name": user.name or "Anonymous",
+                    "email": user.email[:20] + "..." if len(user.email) > 20 else user.email,
+                    "claims": user.claim_count
+                }
+                for user in top_users
+            ]
+        }
+
+    return get_or_set_query_result(cache_key, _compute)
 
 
 @router.get("/users/review-quality")
@@ -347,66 +354,67 @@ async def get_model_accuracy(
     
     Uses user feedback as ground truth.
     """
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    
-    # Get all feedback in period
-    feedbacks = db.query(UserFeedback).filter(
-        UserFeedback.created_at >= cutoff
-    ).all()
-    
-    if not feedbacks:
+    cache_key = analytics_key("model_accuracy", days=days)
+
+    def _compute():
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        feedbacks = db.query(UserFeedback).filter(
+            UserFeedback.created_at >= cutoff
+        ).all()
+
+        if not feedbacks:
+            return {
+                "period_days": days,
+                "message": "No feedback data available",
+                "accuracy": None
+            }
+
+        correct = sum(1 for f in feedbacks if f.predicted == f.actual)
+        total = len(feedbacks)
+        accuracy = correct / total if total > 0 else 0
+
+        verdict_accuracy = {}
+        for verdict in ["fake", "real", "uncertain"]:
+            verdict_feedbacks = [f for f in feedbacks if f.predicted == verdict]
+            if verdict_feedbacks:
+                verdict_correct = sum(1 for f in verdict_feedbacks if f.predicted == f.actual)
+                verdict_accuracy[verdict] = round(verdict_correct / len(verdict_feedbacks), 3)
+            else:
+                verdict_accuracy[verdict] = None
+
+        daily_accuracy = db.query(
+            cast(UserFeedback.created_at, Date).label("date"),
+            func.count(UserFeedback.id).label("total"),
+            func.sum(
+                func.cast(UserFeedback.predicted == UserFeedback.actual, func.Integer())
+            ).label("correct")
+        ).filter(
+            UserFeedback.created_at >= cutoff
+        ).group_by(
+            cast(UserFeedback.created_at, Date)
+        ).order_by(
+            cast(UserFeedback.created_at, Date)
+        ).all()
+
+        daily_trend = [
+            {
+                "date": str(day.date),
+                "accuracy": round(day.correct / day.total, 3) if day.total > 0 else 0,
+                "samples": day.total
+            }
+            for day in daily_accuracy
+        ]
+
         return {
             "period_days": days,
-            "message": "No feedback data available",
-            "accuracy": None
+            "overall_accuracy": round(accuracy, 3),
+            "total_samples": total,
+            "verdict_accuracy": verdict_accuracy,
+            "daily_trend": daily_trend
         }
-    
-    # Calculate accuracy
-    correct = sum(1 for f in feedbacks if f.predicted == f.actual)
-    total = len(feedbacks)
-    accuracy = correct / total if total > 0 else 0
-    
-    # Breakdown by verdict
-    verdict_accuracy = {}
-    for verdict in ["fake", "real", "uncertain"]:
-        verdict_feedbacks = [f for f in feedbacks if f.predicted == verdict]
-        if verdict_feedbacks:
-            verdict_correct = sum(1 for f in verdict_feedbacks if f.predicted == f.actual)
-            verdict_accuracy[verdict] = round(verdict_correct / len(verdict_feedbacks), 3)
-        else:
-            verdict_accuracy[verdict] = None
-    
-    # Daily accuracy trend
-    daily_accuracy = db.query(
-        cast(UserFeedback.created_at, Date).label("date"),
-        func.count(UserFeedback.id).label("total"),
-        func.sum(
-            func.cast(UserFeedback.predicted == UserFeedback.actual, func.Integer())
-        ).label("correct")
-    ).filter(
-        UserFeedback.created_at >= cutoff
-    ).group_by(
-        cast(UserFeedback.created_at, Date)
-    ).order_by(
-        cast(UserFeedback.created_at, Date)
-    ).all()
-    
-    daily_trend = [
-        {
-            "date": str(day.date),
-            "accuracy": round(day.correct / day.total, 3) if day.total > 0 else 0,
-            "samples": day.total
-        }
-        for day in daily_accuracy
-    ]
-    
-    return {
-        "period_days": days,
-        "overall_accuracy": round(accuracy, 3),
-        "total_samples": total,
-        "verdict_accuracy": verdict_accuracy,
-        "daily_trend": daily_trend
-    }
+
+    return get_or_set_query_result(cache_key, _compute)
 
 
 @router.get("/model/confidence-calibration")
@@ -542,69 +550,68 @@ async def get_business_summary(
     
     High-level overview for business intelligence.
     """
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    
-    # Total claims
-    total_claims = db.query(func.count(ClaimRecord.id)).filter(
-        ClaimRecord.created_at >= cutoff
-    ).scalar() or 0
-    
-    # Active users
-    active_users = db.query(
-        func.count(func.distinct(ClaimRecord.user_id))
-    ).filter(
-        and_(
-            ClaimRecord.user_id.isnot(None),
+    cache_key = analytics_key("business_summary", days=days)
+
+    def _compute():
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        total_claims = db.query(func.count(ClaimRecord.id)).filter(
             ClaimRecord.created_at >= cutoff
-        )
-    ).scalar() or 0
-    
-    # Fake claims detected
-    fake_claims = db.query(func.count(ClaimRecord.id)).filter(
-        and_(
-            ClaimRecord.created_at >= cutoff,
-            ClaimRecord.verdict == "fake"
-        )
-    ).scalar() or 0
-    
-    # Viral misinformation caught
-    viral_caught = db.query(func.count(VelocityRecord.id)).filter(
-        and_(
-            VelocityRecord.created_at >= cutoff,
-            VelocityRecord.is_viral == True
-        )
-    ).scalar() or 0
-    
-    # User feedback count
-    feedback_count = db.query(func.count(UserFeedback.id)).filter(
-        UserFeedback.created_at >= cutoff
-    ).scalar() or 0
-    
-    # Growth rate (compare to previous period)
-    previous_cutoff = cutoff - timedelta(days=days)
-    previous_claims = db.query(func.count(ClaimRecord.id)).filter(
-        and_(
-            ClaimRecord.created_at >= previous_cutoff,
-            ClaimRecord.created_at < cutoff
-        )
-    ).scalar() or 1
-    
-    growth_rate = ((total_claims - previous_claims) / previous_claims) * 100 if previous_claims > 0 else 0
-    
-    return {
-        "period_days": days,
-        "summary": {
-            "total_claims": total_claims,
-            "active_users": active_users,
-            "fake_claims_detected": fake_claims,
-            "fake_rate": round(fake_claims / total_claims, 3) if total_claims > 0 else 0,
-            "viral_misinformation_caught": viral_caught,
-            "user_feedback_received": feedback_count,
-            "growth_rate_percent": round(growth_rate, 1),
-        },
-        "impact": {
-            "claims_prevented_from_spreading": viral_caught,  # Simplified metric
-            "users_protected": active_users,
-            "misinformation_detection_rate": round(fake_claims / total_claims, 3) if total_claims > 0 else 0,
+        ).scalar() or 0
+
+        active_users = db.query(
+            func.count(func.distinct(ClaimRecord.user_id))
+        ).filter(
+            and_(
+                ClaimRecord.user_id.isnot(None),
+                ClaimRecord.created_at >= cutoff
+            )
+        ).scalar() or 0
+
+        fake_claims = db.query(func.count(ClaimRecord.id)).filter(
+            and_(
+                ClaimRecord.created_at >= cutoff,
+                ClaimRecord.verdict == "fake"
+            )
+        ).scalar() or 0
+
+        viral_caught = db.query(func.count(VelocityRecord.id)).filter(
+            and_(
+                VelocityRecord.created_at >= cutoff,
+                VelocityRecord.is_viral == True
+            )
+        ).scalar() or 0
+
+        feedback_count = db.query(func.count(UserFeedback.id)).filter(
+            UserFeedback.created_at >= cutoff
+        ).scalar() or 0
+
+        previous_cutoff = cutoff - timedelta(days=days)
+        previous_claims = db.query(func.count(ClaimRecord.id)).filter(
+            and_(
+                ClaimRecord.created_at >= previous_cutoff,
+                ClaimRecord.created_at < cutoff
+            )
+        ).scalar() or 1
+
+        growth_rate = ((total_claims - previous_claims) / previous_claims) * 100 if previous_claims > 0 else 0
+
+        return {
+            "period_days": days,
+            "summary": {
+                "total_claims": total_claims,
+                "active_users": active_users,
+                "fake_claims_detected": fake_claims,
+                "fake_rate": round(fake_claims / total_claims, 3) if total_claims > 0 else 0,
+                "viral_misinformation_caught": viral_caught,
+                "user_feedback_received": feedback_count,
+                "growth_rate_percent": round(growth_rate, 1),
+            },
+            "impact": {
+                "claims_prevented_from_spreading": viral_caught,
+                "users_protected": active_users,
+                "misinformation_detection_rate": round(fake_claims / total_claims, 3) if total_claims > 0 else 0,
+            }
         }
-    }
+
+    return get_or_set_query_result(cache_key, _compute)

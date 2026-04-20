@@ -86,44 +86,67 @@ async def get_usage(
 @router.get("/tiers")
 async def get_tiers() -> Dict[str, Any]:
     """
-    Get information about all available subscription tiers.
-    
-    Returns tier limits and pricing information.
+    Get all subscription tiers with pricing and limits.
+    Pricing in INR via Razorpay.
     """
     return {
+        "currency": "INR",
         "tiers": {
             "free": {
                 "name": "Free",
-                "price": 0,
+                "price_inr": 0,
+                "price_usd": 0,
                 "limits": TIER_LIMITS["free"],
+                "ai_models": "1 model (Qwen3-8B)",
                 "features": [
-                    "100 claims per month",
-                    "Basic fact-checking",
+                    "100 claims/month",
+                    "Qwen3-8B AI analysis (free model)",
                     "Evidence from trusted sources",
+                    "Basic manipulation detection",
                     "Community support",
+                ]
+            },
+            "starter": {
+                "name": "Starter",
+                "price_inr": 99,
+                "price_usd": 1.20,
+                "limits": TIER_LIMITS["starter"],
+                "ai_models": "2 models (Qwen3 + Groq)",
+                "features": [
+                    "500 claims/month",
+                    "2-model AI ensemble (better accuracy)",
+                    "Evidence + source credibility",
+                    "Manipulation & bias detection",
+                    "Email support",
                 ]
             },
             "pro": {
                 "name": "Pro",
-                "price": 9.99,
+                "price_inr": 499,
+                "price_usd": 6.00,
                 "limits": TIER_LIMITS["pro"],
+                "ai_models": "4 models (Qwen3 + Groq + Gemini + Gemma4 31B)",
                 "features": [
-                    "1,000 claims per month",
-                    "Priority processing",
-                    "Advanced analytics",
-                    "SHAP explanations",
-                    "Email support",
+                    "5,000 claims/month",
+                    "4-model AI ensemble (Gemini + Gemma4 31B)",
+                    "SHAP explainability",
+                    "Velocity & viral tracking",
+                    "Semantic clustering",
+                    "Priority support",
                 ]
             },
             "enterprise": {
                 "name": "Enterprise",
-                "price": 99.99,
+                "price_inr": 2999,
+                "price_usd": 36.00,
                 "limits": TIER_LIMITS["enterprise"],
+                "ai_models": "5 models (all + MiniMax 229B)",
                 "features": [
                     "Unlimited claims",
+                    "5-model ensemble (MiniMax 229B included)",
                     "Dedicated support",
-                    "Custom integrations",
                     "API access",
+                    "Custom integrations",
                     "SLA guarantee",
                 ]
             }

@@ -1,0 +1,6 @@
+{
+  "ready": false,
+  "model": "model_optimized.onnx",
+  "tokenizer": "tokenizer.json",
+  "notes": "Set ready=true after copying exported ONNX assets into extension/models"
+}

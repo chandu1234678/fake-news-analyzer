@@ -5,6 +5,16 @@ let user = null;
 let currentSessionId = null;
 let history = [];
 let sessions = [];
+let offlineQueueCount = 0;
+let isSyncingOfflineQueue = false;
+let frictionABState = {
+  testId: null,
+  testName: null,
+  variant: "treatment",
+  frictionEnabled: true,
+};
+
+const OFFLINE_QUEUE_KEY = "offlineClaimQueue";
 
 const chatContainer = document.getElementById("chat-container");
 const inputText     = document.getElementById("input-text");
@@ -43,7 +53,15 @@ chrome.storage.local.get(["token", "user", "currentSessionId"], async d => {
   user  = d.user;
   currentSessionId = d.currentSessionId || null;
   updateUserUI();
+  
+  // Initialize voice button after DOM is ready
+  initVoiceButton();
+  
   await loadSessions();
+  await refreshOfflineQueueCount();
+  await initFrictionABTest();
+  registerNetworkListeners();
+  syncOfflineQueue();
   if (currentSessionId) {
     await loadSessionMessages(currentSessionId);
   } else {
@@ -65,6 +83,95 @@ chrome.storage.local.get(["token", "user", "currentSessionId"], async d => {
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === "ANALYZE_TEXT") { inputText.value = msg.text; send(); }
 });
+
+async function getOfflineQueue() {
+  const data = await chrome.storage.local.get([OFFLINE_QUEUE_KEY]);
+  return Array.isArray(data[OFFLINE_QUEUE_KEY]) ? data[OFFLINE_QUEUE_KEY] : [];
+}
+
+async function setOfflineQueue(queue) {
+  await chrome.storage.local.set({ [OFFLINE_QUEUE_KEY]: queue });
+  offlineQueueCount = queue.length;
+  updateWSStatus();
+}
+
+async function refreshOfflineQueueCount() {
+  const queue = await getOfflineQueue();
+  offlineQueueCount = queue.length;
+  updateWSStatus();
+}
+
+async function queueOfflineClaim(payload) {
+  const queue = await getOfflineQueue();
+  queue.push({
+    ...payload,
+    queued_at: Date.now(),
+  });
+  await setOfflineQueue(queue);
+}
+
+function registerNetworkListeners() {
+  window.addEventListener("online", () => {
+    updateWSStatus();
+    syncOfflineQueue();
+  });
+
+  window.addEventListener("offline", () => {
+    updateWSStatus();
+  });
+}
+
+async function syncOfflineQueue() {
+  if (isSyncingOfflineQueue || !navigator.onLine) return;
+
+  isSyncingOfflineQueue = true;
+  try {
+    let queue = await getOfflineQueue();
+    if (!queue.length) return;
+
+    let synced = 0;
+    const remaining = [];
+
+    for (const item of queue) {
+      try {
+        const body = {
+          message: item.message,
+          session_id: item.session_id || null,
+          history: item.history || [],
+        };
+        if (item.image_url) body.image_url = item.image_url;
+
+        const res = await authFetch("/message", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          remaining.push(item);
+          continue;
+        }
+
+        const data = await readJsonSafe(res);
+        if (data?.session_id && !currentSessionId) {
+          currentSessionId = data.session_id;
+          chrome.storage.local.set({ currentSessionId });
+        }
+        synced += 1;
+      } catch (_) {
+        remaining.push(item);
+      }
+    }
+
+    await setOfflineQueue(remaining);
+
+    if (synced > 0) {
+      await loadSessions();
+      addChatReply(`Synced ${synced} queued claim${synced > 1 ? "s" : ""} after reconnect.`);
+    }
+  } finally {
+    isSyncingOfflineQueue = false;
+  }
+}
 
 // ── User UI ───────────────────────────────────────────────────
 function updateUserUI() {
@@ -141,7 +248,7 @@ async function switchSession(id) {
   chrome.storage.local.set({ currentSessionId: id });
   closeSidebar();
   const s = sessions.find(x => x.id === id);
-  if (s) document.getElementById("chat-title").textContent = s.title;
+  if (s) setChatTitle(s.title);
   chatContainer.innerHTML = "";
   await loadSessionMessages(id);
   renderSessions();
@@ -190,7 +297,7 @@ async function newChat() {
   currentSessionId = null;
   history = [];
   chrome.storage.local.remove("currentSessionId");
-  document.getElementById("chat-title").textContent = "FactCheck AI";
+  setChatTitle("PiNE AI");
   chatContainer.innerHTML = "";
   showWelcome();
   closeSidebar();
@@ -211,7 +318,7 @@ function showWelcome() {
   wrap.className = "welcome-screen";
   wrap.innerHTML = `
     <img src="../icons/logo.png" alt="" class="welcome-logo-img" style="width:56px;height:56px;object-fit:contain;margin-bottom:4px;">
-    <div class="welcome-brand"><span class="brand-main">FactChecker</span><span class="brand-ai"> AI</span></div>
+    <div class="welcome-brand"><span class="brand-main">PiNE</span><span class="brand-ai"> AI</span></div>
     <div class="welcome-sub">Ask me anything or paste a news claim.<br>I'll chat or fact-check automatically.</div>
     <div class="welcome-chips">
       <button class="welcome-chip" id="wc1">📰 Paste a headline to fact-check</button>
@@ -427,6 +534,12 @@ function addFactCard(data, scroll = true, animate = true) {
   // ── Phase 2: Cooldown friction UX ─────────────────────────────
   const cooldown = data.cooldown || null;
   if (cooldown && cooldown.cooldown_level) {
+    if (!frictionABState.frictionEnabled && (cooldown.cooldown_level === "VIRAL_PANIC" || cooldown.cooldown_level === "HIGH_CONCERN")) {
+      trackFrictionEvent("friction_suppressed_by_variant", cooldown);
+      _renderFactCard(data, scroll, animate);
+      return;
+    }
+
     const level = cooldown.cooldown_level;
     
     if (level === "VIRAL_PANIC") {
@@ -451,6 +564,8 @@ function addFactCard(data, scroll = true, animate = true) {
 // ── Friction UX Components (Phase 2.3) ────────────────────────
 
 function showViralPanicInterstitial(data, cooldown, onComplete) {
+  trackFrictionEvent("viral_panic_shown", cooldown);
+
   const overlay = document.createElement("div");
   overlay.className = "friction-overlay viral-panic";
   overlay.innerHTML = `
@@ -532,6 +647,8 @@ function showViralPanicInterstitial(data, cooldown, onComplete) {
 }
 
 function showHighConcernFriction(data, cooldown, onComplete) {
+  trackFrictionEvent("high_concern_shown", cooldown);
+
   const row = document.createElement("div");
   row.className = "bot-row";
   
@@ -648,8 +765,76 @@ function trackFrictionEvent(eventType, cooldown) {
       });
       chrome.storage.local.set({ frictionAnalytics: analytics.slice(-100) });
     });
+
+    // Best-effort server tracking for A/B metrics.
+    void trackABFrictionEvent(eventType, cooldown);
   } catch (e) {
     console.warn("Failed to track friction event:", e);
+  }
+}
+
+async function initFrictionABTest() {
+  try {
+    const res = await authFetch("/ab/assign");
+    if (!res.ok) return;
+
+    const assignments = await readJsonSafe(res);
+    if (!Array.isArray(assignments) || assignments.length === 0) return;
+
+    const frictionAssignment = assignments.find(a => {
+      const name = String(a.test_name || "").toLowerCase();
+      const cfg = a.config || {};
+      return name.includes("friction") || Object.prototype.hasOwnProperty.call(cfg, "friction_enabled");
+    });
+
+    if (!frictionAssignment) return;
+
+    const variant = String(frictionAssignment.variant || "treatment").toLowerCase();
+    const cfg = frictionAssignment.config || {};
+    const frictionEnabled = typeof cfg.friction_enabled === "boolean"
+      ? cfg.friction_enabled
+      : variant !== "control";
+
+    frictionABState = {
+      testId: frictionAssignment.test_id,
+      testName: frictionAssignment.test_name,
+      variant,
+      frictionEnabled,
+    };
+
+    chrome.storage.local.set({ frictionABState });
+  } catch (e) {
+    console.warn("Friction A/B assignment unavailable:", e);
+  }
+}
+
+async function trackABFrictionEvent(eventType, cooldown) {
+  if (!frictionABState.testId) return;
+
+  try {
+    const payload = {
+      test_id: frictionABState.testId,
+      event_type: "sharing_reduction",
+      event_data: {
+        event: eventType,
+        cooldown_level: cooldown?.cooldown_level || null,
+        cooldown_score: cooldown?.cooldown_score || null,
+        variant: frictionABState.variant,
+        friction_enabled: frictionABState.frictionEnabled,
+      }
+    };
+
+    const res = await authFetch("/ab/track", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.warn("A/B friction tracking failed:", res.status, text);
+    }
+  } catch (e) {
+    console.warn("A/B friction tracking error:", e);
   }
 }
 
@@ -665,6 +850,26 @@ function _renderFactCard(data, scroll = true, animate = true) {
     : (data.evidence_articles?.length || data.evidence?.length) ? 60 : 0;
 
   const srcCount = data.evidence_articles?.length || data.evidence?.length || 0;
+
+  // ── Viral/Trending badges (Phase 2) ───────────────────────────
+  const velocity = data.velocity_metrics || {};
+  const isViral = velocity.is_viral || false;
+  const isTrending = velocity.is_trending || false;
+  let viralBadgeHtml = "";
+  
+  if (isViral) {
+    viralBadgeHtml = `
+      <div class="viral-alert-badge">
+        <span class="material-symbols-outlined ms-12">warning</span>
+        🚨 VIRAL ALERT - ${velocity.count_5min || 0} checks in 5 min
+      </div>`;
+  } else if (isTrending) {
+    viralBadgeHtml = `
+      <div class="trending-badge">
+        <span class="material-symbols-outlined ms-12">trending_up</span>
+        ⚠️ TRENDING - ${velocity.count_1hr || 0} checks in 1 hour
+      </div>`;
+  }
 
   const vClass    = verdict === "real" ? "v-real" : verdict === "fake" ? "v-fake" : "v-uncertain";
   const vIcon     = verdict === "real" ? "check_circle" : verdict === "fake" ? "cancel" : "help";
@@ -826,6 +1031,7 @@ function _renderFactCard(data, scroll = true, animate = true) {
   const card = document.createElement("div");
   card.className = "fact-card";
   card.innerHTML = `
+    ${viralBadgeHtml}
     <div class="fact-verdict-hero">
       <div class="verdict-main">
         <span class="material-symbols-outlined verdict-icon-lg ${vClass}">${vIcon}</span>
@@ -966,9 +1172,9 @@ async function submitFeedback(card, data, actual) {
 }
 
 // ── Attach menu ───────────────────────────────────────────────
-let attachedImageUrl = null;
-let attachedFileText = null;
-let attachedFileName = null;
+let attachedImageUrl  = null;  // base64 data URI for images
+let attachedFileData  = null;  // { file, type } or { text, type }
+let attachedFileName  = null;
 
 const attachBtn  = document.getElementById("attach-btn");
 const attachMenu = document.getElementById("attach-menu");
@@ -987,11 +1193,11 @@ function _showPreview(icon, name) {
 }
 
 function _clearAttach() {
-  attachedImageUrl = null;
-  attachedFileText = null;
-  attachedFileName = null;
+  attachedImageUrl  = null;
+  attachedFileData  = null;
+  attachedFileName  = null;
   document.getElementById("attach-preview-bar").style.display = "none";
-  ["file-image","file-pdf","file-txt"].forEach(id => {
+  ["file-image","file-audio","file-pdf","file-txt"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
@@ -1025,79 +1231,68 @@ document.getElementById("file-image").addEventListener("change", e => {
   img.src = objectUrl;
 });
 
-// PDF — extract text using PDF.js (loaded from CDN) or send filename as hint
-document.getElementById("file-pdf").addEventListener("change", async e => {
+// Audio — store file, send to /upload on submit (server-side Whisper transcription)
+document.getElementById("file-audio").addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
-  attachedFileName = file.name;
-  _showPreview("picture_as_pdf", `${file.name} (reading...)`);
-
-  try {
-    // Try to extract text using FileReader + basic text extraction
-    const arrayBuffer = await file.arrayBuffer();
-    // Simple PDF text extraction — look for text between BT/ET markers
-    const bytes = new Uint8Array(arrayBuffer);
-    const text  = new TextDecoder('latin1').decode(bytes);
-    const matches = text.match(/\(([^)]{5,200})\)/g) || [];
-    const extracted = matches
-      .map(m => m.slice(1, -1).replace(/\\n/g, ' ').replace(/\\/g, '').trim())
-      .filter(s => /[a-zA-Z]{3,}/.test(s))
-      .join(' ')
-      .slice(0, 2000);
-
-    if (extracted.length > 50) {
-      attachedFileText = extracted;
-      inputText.value  = extracted.slice(0, 500);
-      autoResize();
-      _showPreview("picture_as_pdf", file.name);
-    } else {
-      // Fallback: just use filename as context
-      attachedFileText = `PDF document: ${file.name}`;
-      inputText.value  = `Fact-check this PDF: ${file.name}`;
-      autoResize();
-      _showPreview("picture_as_pdf", file.name);
-    }
-  } catch (err) {
-    attachedFileText = `PDF: ${file.name}`;
-    inputText.value  = `Fact-check this document: ${file.name}`;
-    autoResize();
-    _showPreview("picture_as_pdf", file.name);
+  const sizeMB = file.size / (1024 * 1024);
+  if (sizeMB > 25) {
+    alert(`Audio file too large: ${sizeMB.toFixed(1)}MB (max 25MB)`);
+    e.target.value = "";
+    return;
   }
-  inputText.focus();
+  attachedFileData = { file, type: "audio" };
+  attachedFileName = file.name;
+  _showPreview("audiotrack", `${file.name} (${sizeMB.toFixed(1)}MB)`);
 });
 
-// Text / DOC file
+
+// PDF — store file, send to /upload on submit (server-side pdfplumber extraction)
+document.getElementById("file-pdf").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const sizeMB = file.size / (1024 * 1024);
+  if (sizeMB > 20) {
+    alert(`PDF too large: ${sizeMB.toFixed(1)}MB (max 20MB)`);
+    e.target.value = "";
+    return;
+  }
+  attachedFileData = { file, type: "pdf" };
+  attachedFileName = file.name;
+  _showPreview("picture_as_pdf", file.name);
+});
+
+// TXT / DOCX — plain text read client-side; DOCX sent to /upload server-side
 document.getElementById("file-txt").addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
-
-  // DOCX/DOC are binary ZIP files — can't read as text
-  if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
-    attachedFileText = `Document: ${file.name}`;
-    attachedFileName = file.name;
-    inputText.value  = `Summarize and fact-check this document: ${file.name}`;
-    autoResize();
-    _showPreview("description", `${file.name} (name only — open file to copy text)`);
-    inputText.focus();
+  const sizeMB = file.size / (1024 * 1024);
+  if (sizeMB > 20) {
+    alert(`File too large: ${sizeMB.toFixed(1)}MB (max 20MB)`);
+    e.target.value = "";
     return;
   }
-
+  // DOCX/DOC are binary — send to /upload for server-side extraction
+  if (/\.(docx?)$/i.test(file.name)) {
+    attachedFileData = { file, type: "docx" };
+    attachedFileName = file.name;
+    _showPreview("description", file.name);
+    return;
+  }
+  // Plain text — read client-side (safe, no binary garbage)
   const reader = new FileReader();
   reader.onload = ev => {
     const text = ev.target.result.slice(0, 3000);
-    attachedFileText = text;
+    // Store as attachment — do NOT dump into input box
+    attachedFileData = { text, type: "txt" };
     attachedFileName = file.name;
-    inputText.value  = text;
-    autoResize();
     _showPreview("description", file.name);
-    inputText.focus();
   };
   reader.readAsText(file);
 });
 async function send() {
   const text = inputText.value.trim();
-  // Allow send if there's an image attached even with no text
-  if (!text && !attachedImageUrl) return;
+  if (!text && !attachedImageUrl && !attachedFileData) return;
   inputText.value = "";
   autoResize();
 
@@ -1107,6 +1302,8 @@ async function send() {
 
   // Capture and clear attachments before async
   const imageUrl = attachedImageUrl;
+  const fileData = attachedFileData;
+  const fileName = attachedFileName;
   _clearAttach();
 
   // If image attached with no/short message, use a descriptive prompt
@@ -1114,17 +1311,64 @@ async function send() {
   if (imageUrl && text.length < 10) {
     sendText = text.length > 0 ? text : "What does this image show? Is there any misinformation or fake news in it?";
   }
-  // Ensure sendText is never empty (backend requires non-empty message)
-  if (!sendText) sendText = "Analyze this content";
-  addUserMsg(text, true, imageUrl);
+  if (!sendText && !fileData) sendText = "Analyze this content";
+
+  // Show user message (with file name badge if file attached)
+  addUserMsg(text || (fileName ? "\uD83D\uDCCE " + fileName : ""), true, imageUrl);
+
+  // Queue offline text/image claims for later sync.
+  if (!navigator.onLine) {
+    if (fileData && fileData.file) {
+      addChatReply("You are offline. File uploads need internet. Please retry after reconnecting.");
+      return;
+    }
+
+    await queueOfflineClaim({
+      message: sendText,
+      session_id: currentSessionId,
+      history,
+      image_url: imageUrl || null,
+    });
+    addChatReply("You are offline. Your claim was queued and will sync automatically when back online.");
+    return;
+  }
+
   const typing = addTyping();
   sendBtn.disabled = true;
 
   try {
-    const body = { message: sendText, session_id: currentSessionId, history };
-    if (imageUrl) body.image_url = imageUrl;
-    const res  = await authFetch("/message", { method: "POST", body: JSON.stringify(body) });
-    const data = await readJsonSafe(res);
+    let res, data;
+
+    // ── File upload path (PDF / DOCX / audio / txt) ───────────
+    if (fileData) {
+      const form = new FormData();
+      if (fileData.file) {
+        form.append("file", fileData.file, fileData.file.name);
+      } else if (fileData.text) {
+        // Plain text — wrap in Blob so /upload receives it as a file
+        const blob = new Blob([fileData.text], { type: "text/plain" });
+        form.append("file", blob, fileName || "document.txt");
+      }
+      if (sendText) form.append("claim", sendText);
+      form.append("language", "en");
+      // uploadFetch — no Content-Type header (browser sets multipart boundary)
+      res  = await uploadFetch("/upload", form);
+      data = await readJsonSafe(res);
+
+    // ── Image path — send to /message with image_url ──────────
+    } else if (imageUrl) {
+      const body = { message: sendText, session_id: currentSessionId, history };
+      body.image_url = imageUrl;
+      res  = await authFetch("/message", { method: "POST", body: JSON.stringify(body) });
+      data = await readJsonSafe(res);
+
+    // ── Normal text path ──────────────────────────────────────
+    } else {
+      const body = { message: sendText, session_id: currentSessionId, history };
+      res  = await authFetch("/message", { method: "POST", body: JSON.stringify(body) });
+      data = await readJsonSafe(res);
+    }
+
     if (!res.ok) {
       let detail = `Server error ${res.status}`;
       if (data) {
@@ -1154,17 +1398,48 @@ async function send() {
 
     if (currentSessionId) {
       const s = sessions.find(x => x.id === currentSessionId);
-      if (s) document.getElementById("chat-title").textContent = s.title;
+      if (s) {
+        // For file uploads, show filename as title instead of PDF content
+        const displayTitle = fileName
+          ? fileName.replace(/\.[^.]+$/, "")  // strip extension
+          : s.title;
+        setChatTitle(displayTitle);
+      }
     }
   } catch(err) {
     typing.remove();
-    addChatReply(`Connection error: ${err.message}. Make sure the backend is running.`);
+
+    const canQueue = !fileData || !fileData.file;
+    const isNetworkError = /failed to fetch|network|connection/i.test(String(err?.message || ""));
+
+    if (canQueue && isNetworkError) {
+      await queueOfflineClaim({
+        message: sendText,
+        session_id: currentSessionId,
+        history,
+        image_url: imageUrl || null,
+      });
+      addChatReply("Connection issue detected. Your claim was queued and will retry automatically when online.");
+    } else {
+      addChatReply(`Connection error: ${err.message}. Make sure the backend is running.`);
+    }
   } finally {
     sendBtn.disabled = false;
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// Helper — set the header title, preserving PiNE AI brand styling
+function setChatTitle(title) {
+  const el = document.getElementById("chat-title");
+  if (!el) return;
+  if (!title || title === "PiNE AI") {
+    el.innerHTML = '<span class="brand-main">PiNE</span><span class="brand-ai"> AI</span>';
+  } else {
+    // Session title — plain text, no brand styling
+    el.textContent = title;
+  }
+}
+
 async function authFetch(path, opts = {}) {
   const res = await apiFetch(path, {
     ...opts,
@@ -1174,6 +1449,17 @@ async function authFetch(path, opts = {}) {
       ...(opts.headers || {}),
     })
   });
+  if (res.status === 401) {
+    chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });
+  }
+  return res;
+}
+
+// uploadFetch — multipart/form-data (NO Content-Type; browser sets boundary automatically)
+async function uploadFetch(path, formData) {
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await apiFetch(path, { method: "POST", headers, body: formData });
   if (res.status === 401) {
     chrome.storage.local.clear(() => { window.location.href = chrome.runtime.getURL("popup/login.html"); });
   }
@@ -1191,7 +1477,10 @@ function updateWSStatus() {
   const statusEl = document.getElementById('ws-status');
   if (!statusEl) return;
   
-  const state = wsManager.getState();
+  const wsState = (typeof wsManager !== 'undefined' && wsManager.getState)
+    ? wsManager.getState()
+    : 'disconnected';
+  const state = navigator.onLine ? wsState : 'disconnected';
   const textEl = statusEl.querySelector('.ws-status-text');
   
   // Remove all state classes
@@ -1221,9 +1510,16 @@ function updateWSStatus() {
       statusEl.classList.add('visible');
       break;
     case 'disconnected':
-      textEl.textContent = 'Offline';
+      textEl.textContent = offlineQueueCount > 0
+        ? `Offline • ${offlineQueueCount} queued`
+        : 'Offline';
       statusEl.classList.add('visible');
       break;
+  }
+
+  if (navigator.onLine && state === 'connected' && offlineQueueCount > 0) {
+    textEl.textContent = `${offlineQueueCount} queued`;
+    statusEl.classList.add('visible');
   }
 }
 
@@ -1244,4 +1540,286 @@ if (typeof wsManager !== 'undefined') {
     console.log('[Popup] Review queue updated:', message);
     // Reload review queue if on review page
   });
+}
+
+// ── Voice Recording ───────────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+// Initialize voice button after DOM is loaded
+function initVoiceButton() {
+  const voiceBtn = document.getElementById("voice-btn");
+  if (!voiceBtn) {
+    console.warn("Voice button not found - will retry");
+    return;
+  }
+  voiceBtn.addEventListener("click", toggleVoiceRecording);
+  console.log("Voice button initialized");
+}
+
+async function toggleVoiceRecording() {
+  if (isRecording) {
+    stopVoiceRecording();
+    return;
+  }
+  
+  await startVoiceRecording();
+}
+
+async function checkMicrophonePermission() {
+  // This function is no longer needed - we'll request permission directly
+  return true;
+}
+
+async function startVoiceRecording() {
+  const voiceBtn = document.getElementById("voice-btn");
+  if (!voiceBtn) return;
+  
+  try {
+    // Use browser's built-in speech recognition (FREE!)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      // Use Web Speech API (free, no backend needed)
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      
+      let finalTranscript = '';
+      
+      recognition.onstart = () => {
+        isRecording = true;
+        voiceBtn.querySelector('.material-symbols-outlined').textContent = 'graphic_eq';
+        voiceBtn.style.color = '#f5576c';
+        voiceBtn.style.animation = 'pulse 1.5s ease-in-out infinite';
+        voiceBtn.title = 'Stop recording';
+        inputText.placeholder = '🎤 Listening...';
+        inputText.style.borderColor = '#f5576c';
+        inputText.style.boxShadow = '0 0 0 3px rgba(245, 87, 108, 0.1)';
+      };
+      
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        
+        // Show live transcription
+        inputText.value = (finalTranscript + interimTranscript).trim();
+        autoResize();
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        resetVoiceUI();
+        
+        let msg = 'Speech recognition error.\n\n';
+        if (event.error === 'not-allowed') {
+          msg += 'Microphone access denied.\n\nPlease:\n1. Click 🔒 in address bar\n2. Allow microphone\n3. Try again';
+        } else if (event.error === 'no-speech') {
+          msg = 'No speech detected. Please try again.';
+        } else {
+          msg += event.error;
+        }
+        
+        alert(msg);
+      };
+      
+      recognition.onend = () => {
+        isRecording = false;
+        resetVoiceUI();
+        
+        const text = finalTranscript.trim();
+        if (text) {
+          inputText.value = text;
+          autoResize();
+          
+          // Smart claim detection
+          if (detectClaimIntent(text)) {
+            setTimeout(() => send(), 500);
+          } else {
+            inputText.focus();
+          }
+        }
+      };
+      
+      mediaRecorder = recognition; // Store for stopping
+      recognition.start();
+      
+    } else {
+      // Fallback: Record audio and use backend
+      await startAudioRecording();
+    }
+    
+  } catch (error) {
+    console.error('Recording failed:', error);
+    resetVoiceUI();
+    alert('Failed to start recording: ' + error.message);
+  }
+}
+
+async function startAudioRecording() {
+  // Fallback method using MediaRecorder
+  const voiceBtn = document.getElementById("voice-btn");
+  
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+  mediaRecorder = new MediaRecorder(stream, { mimeType });
+  audioChunks = [];
+  
+  mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) audioChunks.push(event.data);
+  };
+  
+  mediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(track => track.stop());
+    await processVoiceRecording();
+  };
+  
+  mediaRecorder.start(100);
+  isRecording = true;
+  
+  voiceBtn.querySelector('.material-symbols-outlined').textContent = 'graphic_eq';
+  voiceBtn.style.color = '#f5576c';
+  voiceBtn.style.animation = 'pulse 1.5s ease-in-out infinite';
+  voiceBtn.title = 'Stop recording';
+  inputText.placeholder = '🎤 Listening...';
+  inputText.style.borderColor = '#f5576c';
+  inputText.style.boxShadow = '0 0 0 3px rgba(245, 87, 108, 0.1)';
+}
+
+function detectClaimIntent(text) {
+  // Client-side claim detection
+  const textLower = text.toLowerCase().trim();
+  
+  // Questions are usually chat
+  const questionStarters = ['what is', 'what are', 'who is', 'when did', 'where is', 'why did', 'how does', 'can you', 'tell me', 'explain'];
+  if (questionStarters.some(q => textLower.startsWith(q))) return false;
+  
+  // Greetings are chat
+  const greetings = ['hello', 'hi ', 'hey ', 'thanks'];
+  if (greetings.some(g => textLower.startsWith(g))) return false;
+  
+  // Claim indicators
+  const hasFactualVerb = /\b(is|are|was|were|will be|has been|contains?)\b/.test(textLower);
+  const hasNumbers = /\d+\s*(percent|%|million|billion|thousand|people)/.test(textLower);
+  const hasAbsolutes = /\b(always|never|all|none|every|everyone)\b/.test(textLower);
+  const hasCausation = /\b(causes?|leads? to|results? in|due to|makes?)\b/.test(textLower);
+  const hasAuthority = /\b(study|research|scientists?|doctors?|experts?|government)\b/.test(textLower);
+  const hasControversial = /\b(vaccine|covid|election|climate|conspiracy|hoax|fake)\b/.test(textLower);
+  
+  const score = (hasFactualVerb ? 2 : 0) + (hasNumbers ? 1 : 0) + (hasAbsolutes ? 1 : 0) + 
+                (hasCausation ? 1 : 0) + (hasAuthority ? 1 : 0) + (hasControversial ? 2 : 0);
+  
+  return score >= 2;
+}
+
+function resetVoiceUI() {
+  const voiceBtn = document.getElementById("voice-btn");
+  if (voiceBtn) {
+    voiceBtn.querySelector('.material-symbols-outlined').textContent = 'mic';
+    voiceBtn.style.color = '';
+    voiceBtn.style.animation = '';
+    voiceBtn.title = 'Voice input';
+  }
+  inputText.placeholder = 'Ask anything or paste a claim…';
+  inputText.style.borderColor = '';
+  inputText.style.boxShadow = '';
+  isRecording = false;
+}
+
+function stopVoiceRecording() {
+  if (!mediaRecorder) return;
+  
+  isRecording = false;
+  
+  // Check if it's Web Speech API or MediaRecorder
+  if (mediaRecorder.stop) {
+    mediaRecorder.stop();
+  }
+  
+  resetVoiceUI();
+}
+
+async function processVoiceRecording() {
+  try {
+    const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+    
+    // Validate size
+    const sizeMB = audioBlob.size / (1024 * 1024);
+    if (sizeMB > 25) {
+      throw new Error('Recording too large (max 25MB)');
+    }
+    
+    if (audioBlob.size < 1024) {
+      throw new Error('Recording too short. Please speak for at least 1 second.');
+    }
+    
+    // Show processing message
+    inputText.placeholder = 'Transcribing audio...';
+    
+    // Transcribe audio with smart claim detection
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('language', 'en');
+    formData.append('auto_detect_claim', 'true');
+    
+    const response = await authFetch('/audio/transcribe', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      let errorMsg = 'Transcription failed';
+      try {
+        const error = await response.json();
+        errorMsg = error?.detail || errorMsg;
+      } catch (e) {
+        errorMsg = `Server error: ${response.status}`;
+      }
+      throw new Error(errorMsg);
+    }
+    
+    const result = await response.json();
+    
+    if (!result.success || !result.text) {
+      throw new Error('No transcription received. Please try again.');
+    }
+    
+    // Put transcribed text in input
+    inputText.value = result.text;
+    inputText.placeholder = 'Ask anything or paste a claim…';
+    autoResize();
+    
+    // Auto-send if backend detected it as a claim
+    if (result.claim_detected) {
+      // Backend detected this as a factual claim - auto-verify
+      setTimeout(() => send(), 500);
+    } else {
+      // Looks like a question/chat - let user review
+      inputText.focus();
+    }
+    
+  } catch (error) {
+    console.error('Processing error:', error);
+    resetVoiceUI();
+    
+    let msg = 'Failed to transcribe audio.\n\n';
+    if (error.message) {
+      msg += error.message;
+    } else {
+      msg += 'Please check:\n- Backend is running\n- OpenAI API key is set\n- Internet connection';
+    }
+    
+    alert(msg);
+  }
 }

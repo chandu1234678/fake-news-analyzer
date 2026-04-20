@@ -7,5 +7,8 @@
   "training_samples": 273932,
   "training_date": "2026-04-16",
   "source": "huggingface_hub",
-  "notes": "Production model trained on 7 diverse datasets with 2 epochs. Auto-downloads from HuggingFace Hub."
+  "notes": "Production model trained on 7 diverse datasets with 2 epochs. Auto-downloads from HuggingFace Hub.",
+  "retrain_timestamp": "2026-04-18T03:41:50.814754",
+  "feedback_at_retrain": 247,
+  "auto_retrain": true
 }

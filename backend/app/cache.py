@@ -395,3 +395,34 @@ class PartialCache:
 
 # Initialize partial cache helper
 partial_cache = PartialCache()
+
+
+# ── Query Result Caching ─────────────────────────────────────
+
+TTL_ANALYTICS = 5 * 60  # 5 minutes
+
+
+def analytics_key(endpoint: str, **params: Any) -> str:
+    """Generate a stable cache key for analytics endpoints."""
+    normalized = "|".join(f"{k}={params[k]}" for k in sorted(params.keys()))
+    payload = f"{endpoint}|{normalized}"
+    digest = hashlib.sha256(payload.encode()).hexdigest()
+    return f"analytics:{endpoint}:{digest}"
+
+
+def get_or_set_query_result(
+    key: str,
+    query_fn,
+    ttl: int = TTL_ANALYTICS,
+):
+    """Return cached query result or execute and cache it."""
+    cached_result = cache.get(key)
+    if cached_result is not None:
+        cache.increment("cache:query:hits")
+        return cached_result
+
+    cache.increment("cache:query:misses")
+    result = query_fn()
+    if result is not None:
+        cache.set(key, result, ttl)
+    return result
