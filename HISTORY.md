@@ -245,3 +245,5 @@ Each commit represents actual work done on the project.
 ## 2026-04-24 19:28 - Phase 5.1: Real-time WebSocket Features - WebSocket server with ConnectionManager - Room-based broadcasting - Automatic reconnection with exponential backoff - Client-side WebSocket manager - Real-time notifications - Connection status indicator
 
 ## 2026-04-29 01:27 - Phase 5.2: Advanced Caching & Performance - Redis cache with CacheManager - Partial caching for ML, AI, evidence - TTL management and cache invalidation - Cache statistics and management endpoints - Graceful degradation on cache failures
+
+## 2026-04-29 20:40 - Phase 5.4: API Rate Limiting & Quotas - Redis-based sliding window rate limiter - Tiered limits (free, pro, enterprise) - Per-endpoint rate limiting - Monthly quota tracking - Usage analytics and history - Tier upgrade flows - Rate limit headers middleware
